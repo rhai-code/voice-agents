@@ -23,6 +23,8 @@ backend:
     TTS_TIMEOUT_S: "30"
     STT_URL: ""
     STT_MODEL: "whisper"
+    MLFLOW_TRACKING_URI: ""
+    MLFLOW_EXPERIMENT_NAME: "ai-voice-agent"
   secret:
     create: true
     API_KEY: ""

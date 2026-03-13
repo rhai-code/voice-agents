@@ -46,6 +46,32 @@ from src.tools import (
 
 set_debug(True)
 
+# ─── Optional MLflow tracing ────────────────────────────────────────────────
+_mlflow_uri = os.environ.get("MLFLOW_TRACKING_URI", "").strip()
+_mlflow_enabled = False
+if _mlflow_uri:
+    try:
+        import mlflow
+        from mlflow.langchain.langchain_tracer import MlflowLangchainTracer
+
+        mlflow.set_tracking_uri(_mlflow_uri)
+        experiment_name = os.environ.get("MLFLOW_EXPERIMENT_NAME", "ai-voice-agent")
+        mlflow.set_experiment(experiment_name)
+        _mlflow_enabled = True
+        print(f"[mlflow] Tracing enabled → {_mlflow_uri}  experiment={experiment_name}", flush=True)
+    except Exception as exc:
+        print(f"[mlflow] Failed to initialise tracing (continuing without): {exc}", flush=True)
+
+
+def _mlflow_callbacks() -> list:
+    """Return MLflow callback handlers if tracing is enabled, else empty list."""
+    if not _mlflow_enabled:
+        return []
+    try:
+        return [MlflowLangchainTracer()]
+    except Exception:
+        return []
+
 
 def _safe_messages(result: dict) -> list[dict[str, str]]:
     msgs = []
@@ -101,6 +127,9 @@ def _select_tts_text(result: dict) -> str:
 
 async def _invoke_graph(inputs: Any, config: dict) -> dict:
     """Invoke graph in a thread to avoid blocking the WS event loop."""
+    callbacks = _mlflow_callbacks()
+    if callbacks:
+        config = {**config, "callbacks": callbacks}
     return await asyncio.to_thread(GRAPH.invoke, inputs, config)
 
 

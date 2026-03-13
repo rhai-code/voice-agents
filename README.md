@@ -10,7 +10,7 @@ A voice agent demo simulating "Pizza Palace" - ordering a pizza.
 - Agent handoffs using Langchain + Langgraph
 - Next.js web ui using websockets
 - Python websocket server backend
-
+- (Optional) MLFlow tracing
 
 ## 🏃‍♀️ Running the docs site
 
