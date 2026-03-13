@@ -260,33 +260,35 @@ def convert_speech_to_text(audio: bytes):
 
     pause_listening()
 
-    headers = {}
-    if STT_TOKEN:
-        headers["Authorization"] = f"Bearer {STT_TOKEN}"
-
-    files = {
-        "file": ("audio.wav", audio, "audio/wav"),
-        "model": (None, STT_MODEL),
-    }
-
     try:
-        resp = requests.post(STT_URL, headers=headers, files=files, timeout=60)
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        return f"Failed to transcribe audio: {exc}"
+        headers = {}
+        if STT_TOKEN:
+            headers["Authorization"] = f"Bearer {STT_TOKEN}"
 
-    try:
-        data = resp.json()
-    except ValueError:
-        return "Speech-to-text response was not valid JSON."
+        files = {
+            "file": ("audio.wav", audio, "audio/wav"),
+            "model": (None, STT_MODEL),
+        }
+
+        try:
+            resp = requests.post(STT_URL, headers=headers, files=files, timeout=60)
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            return f"Failed to transcribe audio: {exc}"
+
+        try:
+            data = resp.json()
+        except ValueError:
+            return "Speech-to-text response was not valid JSON."
+
+        transcript = data.get("text") or data.get("transcription")
+        if not transcript:
+            return "Speech-to-text succeeded but no transcript was returned."
+
+        return transcript
     finally:
         resume_listening()
 
-    transcript = data.get("text") or data.get("transcription")
-    if not transcript:
-        return "Speech-to-text succeeded but no transcript was returned."
-
-    return transcript
 
 
 @tool

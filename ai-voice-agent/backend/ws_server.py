@@ -96,7 +96,7 @@ def _interrupt_values(result: dict) -> list[Any]:
     return values
 
 
-_TTS_CALL_RE = re.compile(r'convert_text_to_speech\\(.*?text\\s*=\\s*"(.*?)".*?\\)')
+_TTS_CALL_RE = re.compile(r'convert_text_to_speech\(.*?text\s*=\s*"(.*?)".*?\)')
 
 
 def _select_tts_text(result: dict) -> str:
@@ -316,10 +316,8 @@ async def handler(ws) -> None:
 
 async def main(host: str = "0.0.0.0", port: int = 8765):
     """Main function to start the WS server."""
-    if websockets is None:
-        raise RuntimeError(
-            "Missing dependency: websockets. Install with `pip install websockets`."
-        )
+    # websockets is a required dependency - import would fail at module level if missing
+    assert websockets is not None
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
 
