@@ -71,11 +71,11 @@ mlflow:
     storageClass: ""
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 200m
+      memory: 512Mi
     limits:
-      cpu: 500m
-      memory: 1024Mi
+      cpu: 1000m
+      memory: 2048Mi
 
 route:
   enabled: true
