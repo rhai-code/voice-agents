@@ -33,13 +33,13 @@ function pcmToWavBlob(pcm: Int16Array, sampleRate: number): Blob {
   view.setUint32(4, 36 + dataSize, true);
   writeString(8, "WAVE");
   writeString(12, "fmt ");
-  view.setUint32(16, 16, true); // PCM
-  view.setUint16(20, 1, true); // format
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
   view.setUint32(28, byteRate, true);
   view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true); // bits
+  view.setUint16(34, 16, true);
   writeString(36, "data");
   view.setUint32(40, dataSize, true);
   new Uint8Array(buffer, 44).set(new Uint8Array(pcm.buffer));
@@ -60,13 +60,89 @@ function bytesToInt16(bytes: Uint8Array): Int16Array {
 }
 
 function bytesToInt16View(bytes: Uint8Array): Int16Array {
-  // Fast path: avoid copying when we have even-sized, aligned buffers.
   if (bytes.byteLength % 2 === 0 && bytes.byteOffset % 2 === 0) {
     return new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
   }
   return bytesToInt16(bytes);
 }
 
+// ─── Talking Pizza SVG ─────────────────────────────────────────────────────────
+function TalkingPizza({ isTalking, className }: { isTalking: boolean; className?: string }) {
+  return (
+    <svg viewBox="0 0 400 400" className={className} xmlns="http://www.w3.org/2000/svg">
+      {/* Pizza body - triangle slice */}
+      <g className={isTalking ? "pizza-talking" : ""} style={{ transformOrigin: "200px 200px" }}>
+        {/* Crust arc */}
+        <path
+          d="M 80 280 Q 200 60 320 280 Z"
+          fill="#F5C342"
+          stroke="#D4A017"
+          strokeWidth="4"
+        />
+        {/* Crust edge */}
+        <path
+          d="M 80 280 Q 200 240 320 280"
+          fill="#D4A017"
+          stroke="#B8860B"
+          strokeWidth="3"
+        />
+        {/* Sauce layer */}
+        <path
+          d="M 110 265 Q 200 90 290 265 Z"
+          fill="#CC3333"
+          opacity="0.7"
+        />
+        {/* Cheese spots */}
+        <circle cx="170" cy="200" r="18" fill="#FFE4A0" opacity="0.6" />
+        <circle cx="230" cy="190" r="15" fill="#FFE4A0" opacity="0.5" />
+        <circle cx="200" cy="150" r="12" fill="#FFE4A0" opacity="0.6" />
+
+        {/* Pepperoni */}
+        <circle cx="155" cy="215" r="14" fill="#CC2200" />
+        <circle cx="245" cy="210" r="12" fill="#CC2200" />
+        <circle cx="200" cy="160" r="11" fill="#CC2200" />
+        <circle cx="180" cy="175" r="10" fill="#CC2200" />
+        <circle cx="225" cy="170" r="9" fill="#CC2200" />
+
+        {/* Eyes */}
+        <g>
+          {/* Left eye */}
+          <ellipse cx="170" cy="155" rx="16" ry="18" fill="white" />
+          <ellipse cx="173" cy="157" rx="8" ry="10" fill="#222" />
+          <circle cx="176" cy="153" r="3" fill="white" />
+          {/* Right eye */}
+          <ellipse cx="230" cy="155" rx="16" ry="18" fill="white" />
+          <ellipse cx="233" cy="157" rx="8" ry="10" fill="#222" />
+          <circle cx="236" cy="153" r="3" fill="white" />
+        </g>
+
+        {/* Mouth */}
+        {isTalking ? (
+          <g>
+            <ellipse cx="200" cy="230" rx="30" ry="18" fill="#8B0000" />
+            <ellipse cx="200" cy="225" rx="30" ry="6" fill="none" stroke="#222" strokeWidth="2" />
+            <ellipse cx="200" cy="238" rx="12" ry="5" fill="#FF6B6B" />
+          </g>
+        ) : (
+          <g>
+            <path d="M 170 225 Q 200 245 230 225" fill="none" stroke="#222" strokeWidth="3" strokeLinecap="round" />
+          </g>
+        )}
+
+        {/* Red Hat */}
+        <g>
+          <ellipse cx="200" cy="108" rx="60" ry="10" fill="#CC0000" />
+          <rect x="155" y="75" width="90" height="35" rx="6" fill="#EE0000" />
+          <rect x="145" y="100" width="110" height="14" rx="4" fill="#CC0000" />
+          {/* Hat brim highlight */}
+          <rect x="160" y="80" width="40" height="4" rx="2" fill="#FF4444" opacity="0.5" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────────
 export default function Home() {
   const [wsUrl, setWsUrl] = useState("ws://127.0.0.1:8765");
   const [connected, setConnected] = useState(false);
@@ -96,6 +172,8 @@ export default function Home() {
   const [ttsRecordedBytes, setTtsRecordedBytes] = useState<number>(0);
   const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([]);
   const [micDeviceId, setMicDeviceId] = useState<string>("default");
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [waiting, setWaiting] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const ttsReceivingBinaryRef = useRef<boolean>(false);
@@ -111,15 +189,10 @@ export default function Home() {
   const ttsSampleRateRef = useRef<number>(24000);
   const ttsStartedRef = useRef<boolean>(false);
   const ttsByteRemainderRef = useRef<Uint8Array>(new Uint8Array(0));
-  const ttsPrebufferMs = 2000; // prebuffer before starting playback to absorb jitter
-  // Micro rebuffer gate (does not increase initial delay): pause when dangerously low, resume quickly.
-  // This trades "choppy clicks" (underruns) for short pauses.
+  const ttsPrebufferMs = 2000;
   const ttsLowWaterMs = 20;
   const ttsHighWaterMs = 400;
-  // Prevent rapid pause/resume "ticking" by holding a minimum pause duration once we rebuffer.
   const ttsRebufferHoldMs = 150;
-  // Prevent frequent tiny pauses by enforcing a minimum time between rebuffers.
-  // During cooldown we keep playing unless buffer becomes critically low.
   const ttsRebufferCooldownMs = 2000;
   const ttsEmergencyLowMs = 10;
 
@@ -134,19 +207,17 @@ export default function Home() {
   const ttsFirstTokenAtMsRef = useRef<number>(0);
   const ttsFirstAudioAtMsRef = useRef<number>(0);
 
-  // Shared ring buffer (SharedArrayBuffer + Atomics) to avoid per-chunk port messaging.
   const ttsSabAudioRef = useRef<SharedArrayBuffer | null>(null);
   const ttsSabCtrlRef = useRef<SharedArrayBuffer | null>(null);
   const ttsSabAudioI16Ref = useRef<Int16Array | null>(null);
   const ttsSabCtrlI32Ref = useRef<Int32Array | null>(null);
   const ttsSabSamplesRef = useRef<number>(0);
 
-  const ttsBufferedMsRef = useRef<number>(0); // updated by interval for UI + min/max
+  const ttsBufferedMsRef = useRef<number>(0);
   const ttsMinBufferedMsRef = useRef<number>(Number.POSITIVE_INFINITY);
   const ttsMaxBufferedMsRef = useRef<number>(0);
   const ttsStreamStatusRef = useRef<string>("idle");
 
-  // Recording (capture exactly what we received from the model, before browser resampling).
   const ttsRecordedChunksRef = useRef<Int16Array[]>([]);
   const ttsRecordedSamplesRef = useRef<number>(0);
   const ttsRecordedBuffersRef = useRef<ArrayBuffer[]>([]);
@@ -159,7 +230,16 @@ export default function Home() {
   const ttsRxInSamplesRef = useRef<number>(0);
   const [ttsGenRealtimeX, setTtsGenRealtimeX] = useState<number>(0);
 
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
   const _ttsOutRate = () => ttsCtxRef.current?.sampleRate ?? ttsSampleRateRef.current;
+
+  const isSpeaking = ttsStreamStatus === "buffering" || ttsStreamStatus === "draining";
+
+  // Auto-scroll conversation
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, waiting]);
 
   const stopTtsStream = (opts?: { resetStats?: boolean }) => {
     const resetStats = opts?.resetStats ?? true;
@@ -177,7 +257,6 @@ export default function Home() {
       if (resetStats) {
         ttsWorkletNodeRef.current?.port.postMessage({ type: "reset" });
       } else {
-        // Freeze counters after stream end so they don't keep increasing during idle silence.
         ttsWorkletNodeRef.current?.port.postMessage({ type: "stop" });
       }
     } catch {}
@@ -197,6 +276,7 @@ export default function Home() {
       setTtsStreamRebuffers(0);
     }
     setTtsStreamStatus("idle");
+    setWaiting(false);
   };
 
   const clearTtsRecording = () => {
@@ -215,8 +295,6 @@ export default function Home() {
     if (!ttsRecordEnabled) return;
     const sr = ttsRecordedSampleRate || ttsSampleRateRef.current;
     if (!sr) return;
-
-    // Prefer binary-frame recording (zero-copy) when available.
     const bufs = ttsRecordedBuffersRef.current;
     const totalBytes = ttsRecordedBytesLenRef.current;
     let wav: Blob | null = null;
@@ -228,7 +306,6 @@ export default function Home() {
         joinedBytes.set(new Uint8Array(b), offB);
         offB += b.byteLength;
       }
-      // Ensure even bytes for int16.
       const evenLen = joinedBytes.length - (joinedBytes.length % 2);
       const i16 = bytesToInt16View(joinedBytes.subarray(0, evenLen));
       wav = pcmToWavBlob(i16, sr);
@@ -247,7 +324,6 @@ export default function Home() {
       durationMs = (joined.length / sr) * 1000;
     }
     if (!wav) return;
-
     const url = URL.createObjectURL(wav);
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     setTtsRecordedUrl(url);
@@ -264,7 +340,6 @@ export default function Home() {
     if (ttsWorkletNodeRef.current) return ttsWorkletNodeRef.current;
 
     if (!ttsWorkletModuleUrlRef.current) {
-      // Inline module via Blob URL so it works in a static Next build.
       const moduleCode = `
 class TtsPlayerProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -273,8 +348,8 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
     this.outRate = sampleRate;
     this.sharedCtrl = null;
     this.sharedAudio = null;
-    this.ctrl = null; // Int32Array view
-    this.audio = null; // Int16Array view (input sample rate)
+    this.ctrl = null;
+    this.audio = null;
     this.audioSamples = 0;
     this.underruns = 0;
     this.rebuffers = 0;
@@ -313,13 +388,11 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
         this.audio = new Int16Array(this.sharedAudio);
         this.audioSamples = msg.audioSamples|0;
       } else if (msg.type === "eos") {
-        // No more input is expected for this stream.
         this.eos = true;
       } else if (msg.type === "stop") {
         this.enabled = false;
         this.playing = false;
       } else if (msg.type === "reset") {
-        // Reset counters; the producer/consumer pointers are managed in shared ctrl.
         this.underruns = 0;
         this.rebuffers = 0; this.playing = false; this.enabled = true; this.eos = false;
         this.holdUntil = 0;
@@ -335,7 +408,6 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
   }
 
   _readInputSampleAt(pos) {
-    // pos is modulo audioSamples
     return this.audio[pos] / 32768;
   }
 
@@ -355,7 +427,6 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
       }
       return true;
     }
-    // Once stream ended and buffer drained, stop processing (and stop counting underruns).
     const w0 = Atomics.load(this.ctrl, 0);
     const r0 = Atomics.load(this.ctrl, 1);
     const avail0 = this._availableInputSamples(w0, r0, this.audioSamples);
@@ -369,11 +440,8 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
       }
       return true;
     }
-    // Jitter buffer gating: don't start until we have startFrames buffered.
-    // If we drop below lowFrames, pause until we refill above highFrames.
     if (!this.playing) {
       const bufferedFrames = Math.floor((avail0 * this.outRate) / this.inRate);
-      // After a rebuffer, enforce a minimum pause duration to avoid "ticking".
       const holdActive = this.startedOnce && this.outCursor < this.holdUntil;
       const startThreshold = this.startedOnce && this.highFrames > 0 ? this.highFrames : this.startFrames;
       if (bufferedFrames >= startThreshold || (startThreshold === 0 && bufferedFrames > 0)) {
@@ -400,8 +468,6 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
       const inCooldown = this.cooldownFrames > 0 && this.outCursor < this.cooldownUntil;
       const emergency = this.emergencyLowFrames > 0 && bufferedFramesNow <= this.emergencyLowFrames;
       if (inCooldown && !emergency) {
-        // During cooldown we prefer to keep playing (fewer pauses). If we truly starve, we'll
-        // hit emergency and pause, or ultimately underrun.
       } else {
       this.playing = false;
       this.rebuffers++;
@@ -414,17 +480,14 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
       return true;
       }
     }
-    // If we were paused and refilled enough, resume.
     if (!this.playing && this.highFrames > 0 && bufferedFramesNow >= this.highFrames) {
       this.playing = true;
     }
-    // Resample directly from shared input ring into output.
     let w = w0;
     let r = r0;
     let avail = avail0;
-    const step = this.inRate / this.outRate; // input samples per output sample
+    const step = this.inRate / this.outRate;
     let frac = this.pos;
-    // Ensure we have at least 2 samples for interpolation.
     if (avail < 2) {
       out.fill(0);
       this.underruns++;
@@ -435,20 +498,16 @@ class TtsPlayerProcessor extends AudioWorkletProcessor {
       }
       return true;
     }
-    // Prime s0/s1 from current read position.
     let s0 = this._readInputSampleAt(r);
     let s1 = this._readInputSampleAt((r + 1) % this.audioSamples);
-    // We'll consume input by advancing r as needed when frac crosses 1.0
     for (let i = 0; i < frames; i++) {
       out[i] = s0 + (s1 - s0) * frac;
       frac += step;
       while (frac >= 1.0) {
         frac -= 1.0;
-        // consume one input sample: advance r by 1
         r = (r + 1) % this.audioSamples;
         avail -= 1;
         if (avail < 1) {
-          // no next sample available
           out.fill(0, i + 1);
           this.underruns++;
           break;
@@ -510,11 +569,9 @@ registerProcessor("tts-player", TtsPlayerProcessor);
   };
 
   const ensureSharedRing = (inRate: number) => {
-    // 12s ring at input sample rate; enough to absorb jitter without being huge.
     const seconds = 12;
     const samples = Math.max(1, Math.floor(inRate * seconds));
     if (ttsSabAudioRef.current && ttsSabSamplesRef.current === samples) return;
-    // Require cross-origin isolation for SharedArrayBuffer.
     if (typeof SharedArrayBuffer === "undefined" || !(globalThis as any).crossOriginIsolated) {
       throw new Error(
         "SharedArrayBuffer unavailable. Ensure COOP/COEP headers are set (crossOriginIsolated=true)."
@@ -522,7 +579,7 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     }
     ttsSabSamplesRef.current = samples;
     ttsSabAudioRef.current = new SharedArrayBuffer(samples * 2);
-    ttsSabCtrlRef.current = new SharedArrayBuffer(8); // 2x int32: writePos, readPos
+    ttsSabCtrlRef.current = new SharedArrayBuffer(8);
     ttsSabAudioI16Ref.current = new Int16Array(ttsSabAudioRef.current);
     ttsSabCtrlI32Ref.current = new Int32Array(ttsSabCtrlRef.current);
     Atomics.store(ttsSabCtrlI32Ref.current, 0, 0);
@@ -539,7 +596,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     let r = Atomics.load(ctrl, 1);
     const avail = w >= r ? (w - r) : (size - (r - w));
     let free = size - avail - 1;
-    // If overflow, drop oldest by advancing read pointer.
     if (src.length > free) {
       const drop = src.length - free;
       r = (r + drop) % size;
@@ -555,13 +611,10 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     Atomics.store(ctrl, 0, w);
   };
 
-  // No per-chunk AudioWorklet messaging path: we write into the SharedArrayBuffer ring.
-
   useEffect(() => {
     ttsStreamStatusRef.current = ttsStreamStatus;
   }, [ttsStreamStatus]);
 
-  // Revoke old recorded URLs to avoid leaks.
   const prevTtsRecordedUrlRef = useRef<string>("");
   useEffect(() => {
     const prev = prevTtsRecordedUrlRef.current;
@@ -574,7 +627,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
 
   const ensureTtsContext = async (_sr: number) => {
     if (ttsCtxRef.current) return ttsCtxRef.current;
-    // Prefer browser default sample rate (usually 48k). We'll resample incoming 24k PCM.
     ttsCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     setTtsOutSampleRate(ttsCtxRef.current.sampleRate);
     return ttsCtxRef.current!;
@@ -587,7 +639,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     }
   };
 
-  // Update buffered-ms UI outside the audio callback to avoid glitching playback.
   useEffect(() => {
     const id = window.setInterval(() => {
       const ctx = ttsCtxRef.current;
@@ -596,19 +647,15 @@ registerProcessor("tts-player", TtsPlayerProcessor);
       const ms = outRate ? (bufferedFrames / outRate) * 1000 : 0;
       ttsBufferedMsRef.current = ms;
       setTtsStreamBufferedMs(ms);
-      // Throttle stats updates: updating React state per audio frame can cause main-thread stalls.
       setTtsStreamBytes(ttsStreamBytesRef.current);
       setTtsStreamChunks(ttsStreamChunksRef.current);
       setTtsStreamFrames(ttsStreamFramesRef.current);
-      // Keep these visible after the stream ends (idle) for debugging.
       if (ttsStreamStatusRef.current !== "idle" || ttsWorkletNodeRef.current) {
         if (!ttsStatsLatchedRef.current) {
           setTtsStreamUnderruns(ttsWorkletUnderrunsRef.current || 0);
           setTtsStreamRebuffers(ttsWorkletRebuffersRef.current || 0);
         }
       }
-      // Generation speed: (audio seconds produced) / (wall clock seconds elapsed).
-      // Freeze once the stream ends so it doesn't drift while idle/draining.
       if (
         ttsStreamStatusRef.current !== "idle" &&
         ttsRxStartedAtMsRef.current > 0 &&
@@ -622,7 +669,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
         const audioS = ttsRxInSamplesRef.current / ttsSampleRateRef.current;
         setTtsGenRealtimeX(audioS / elapsedS);
       }
-      // Track min/max only while actually playing (otherwise initial prebuffer would force min=0).
       if (
         ttsStreamStatusRef.current !== "idle" &&
         ttsWorkletPlayingRef.current &&
@@ -655,7 +701,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     ws.onerror = () => setError("WebSocket error");
     ws.onmessage = (evt) => {
       try {
-        // TTS audio chunks can arrive as binary frames (ArrayBuffer) to avoid base64 overhead.
         if (typeof evt.data !== "string") {
           if (!ttsReceivingBinaryRef.current) return;
           const handleBuffer = (buf: ArrayBuffer) => {
@@ -675,17 +720,13 @@ registerProcessor("tts-player", TtsPlayerProcessor);
             const inSamples = Math.floor(len / 2);
             ttsRxInSamplesRef.current += inSamples;
             ttsStreamFramesRef.current += Math.round((inSamples * outRate) / inRate);
-
-            // Recording: keep a copy so we can transfer the original buffer to the worklet.
             if (ttsRecordEnabled) {
               const copy = buf.slice(0);
               ttsRecordedBuffersRef.current.push(copy);
               ttsRecordedBytesLenRef.current += copy.byteLength;
             }
-            // Feed the SAB ring directly (no per-chunk port messaging).
             writeToSharedRing(buf);
           };
-
           if (evt.data instanceof ArrayBuffer) {
             handleBuffer(evt.data);
             return;
@@ -704,7 +745,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
           ttsStatsLatchedRef.current = false;
           ttsSampleRateRef.current = msg.sample_rate;
           ttsReceivingBinaryRef.current = true;
-          // For TTFT we use `tts_first_token` (set below). `tts_begin` is just stream metadata.
           ttsFirstAudioAtMsRef.current = 0;
           ttsFirstTokenAtMsRef.current = 0;
           setTtsTtftMs(0);
@@ -731,9 +771,7 @@ registerProcessor("tts-player", TtsPlayerProcessor);
             clearTtsRecording();
             setTtsRecordedSampleRate(msg.sample_rate);
           }
-          // Ensure AudioContext exists (even if suspended).
           void ensureTtsContext(ttsSampleRateRef.current);
-          // SAB ring + worklet init (requires COOP/COEP -> crossOriginIsolated).
           try {
             ensureSharedRing(msg.sample_rate);
             void ensureTtsWorklet(msg.sample_rate)
@@ -762,16 +800,12 @@ registerProcessor("tts-player", TtsPlayerProcessor);
           }
         }
         if (msg.type === "tts_end") {
-          // Drain: keep playing until queue is empty; then stop the processor.
           setTtsStreamStatus("draining");
           ttsReceivingBinaryRef.current = false;
-          // Clear any odd-byte remainder just in case.
           ttsByteRemainderRef.current = new Uint8Array(0);
-          // Tell the worklet no more input is expected; it will stop itself once drained.
           try {
             ttsWorkletNodeRef.current?.port.postMessage({ type: "eos" });
           } catch {}
-          // Latch final counters to avoid late worklet stats overwriting UI during/after draining.
           ttsStatsLatchedRef.current = true;
           setTtsStreamUnderruns(ttsWorkletUnderrunsRef.current || 0);
           setTtsStreamRebuffers(ttsWorkletRebuffersRef.current || 0);
@@ -781,7 +815,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
           if (ttsReqStartedAtMsRef.current > 0 && ttsFirstAudioAtMsRef.current > 0) {
             setTtsTtfbMs(ttsFirstAudioAtMsRef.current - ttsReqStartedAtMsRef.current);
           }
-          // Capture a WAV of exactly what we received from the model.
           finalizeTtsRecording();
           const check = setInterval(() => {
             const ctx = ttsCtxRef.current;
@@ -789,7 +822,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
             const bufferedFrames = ttsWorkletBufferedFramesRef.current || 0;
             const ms = outRate ? (bufferedFrames / outRate) * 1000 : 0;
             if (ttsStartedRef.current && ms <= 5) {
-              // Auto-finish: keep min/max visible for debugging; only clear on next tts_begin or manual stop.
               stopTtsStream({ resetStats: false });
               clearInterval(check);
             }
@@ -798,12 +830,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
         if (msg.type === "graph_result") {
           setPizzaType(msg.pizza_type);
           setMessages(msg.messages);
-          if (msg.interrupt) {
-            setMessages((prev) => [
-              ...prev,
-              { role: "interrupt", content: JSON.stringify(msg.interrupt) },
-            ]);
-          }
         }
         if (msg.type === "error") setError(msg.error);
       } catch (e) {
@@ -820,17 +846,13 @@ registerProcessor("tts-player", TtsPlayerProcessor);
 
   const startRecording = async () => {
     setError("");
-    // Don't clear conversation/state when starting a new recording.
-    // The conversation will update when we send the audio and receive a graph result.
     setTranscript("");
     pcmRef.current = [];
-
     if (!connected || !wsRef.current) {
       setError("Connect to WS server first.");
       return;
     }
-
-    setStatus("requesting mic…");
+    setStatus("requesting mic\u2026");
     try {
       const constraints: MediaStreamConstraints =
         micDeviceId && micDeviceId !== "default"
@@ -840,7 +862,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err: any) {
-        // Fallback to default device if the chosen device disappeared.
         if (micDeviceId && micDeviceId !== "default") {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           setMicDeviceId("default");
@@ -855,19 +876,14 @@ registerProcessor("tts-player", TtsPlayerProcessor);
       return;
     }
     const stream = mediaStreamRef.current!;
-
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     audioCtxRef.current = audioCtx;
     const source = audioCtx.createMediaStreamSource(stream);
-
     const processor = audioCtx.createScriptProcessor(4096, 1, 1);
     processorRef.current = processor;
-
     source.connect(processor);
     processor.connect(audioCtx.destination);
-
     setStatus("recording");
-
     processor.onaudioprocess = (e) => {
       const input = e.inputBuffer.getChannelData(0);
       const inRate = e.inputBuffer.sampleRate;
@@ -891,7 +907,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     audioCtxRef.current = null;
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
     mediaStreamRef.current = null;
-
     const chunks = pcmRef.current;
     const total = chunks.reduce((acc, c) => acc + c.length, 0);
     const joined = new Int16Array(total);
@@ -900,11 +915,10 @@ registerProcessor("tts-player", TtsPlayerProcessor);
       joined.set(c, offset);
       offset += c.length;
     }
-
     const wav = pcmToWavBlob(joined, sampleRate);
     const b64 = await blobToBase64(wav);
-
     setStatus("sending");
+    setWaiting(true);
     wsRef.current?.send(JSON.stringify({ type: "audio_wav_b64", audio_b64: b64 }));
     setStatus("sent (awaiting response)");
   };
@@ -935,6 +949,8 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     ttsFirstAudioAtMsRef.current = 0;
     setTtsTtftMs(0);
     setTtsTtfbMs(0);
+    void primeTtsAudio();
+    setWaiting(true);
     wsRef.current.send(JSON.stringify({ type: "text", text: textToSend }));
   };
 
@@ -949,7 +965,6 @@ registerProcessor("tts-player", TtsPlayerProcessor);
     ttsFirstAudioAtMsRef.current = 0;
     setTtsTtftMs(0);
     setTtsTtfbMs(0);
-    // Prime audio inside the click handler (user gesture) so playback isn't blocked.
     void primeTtsAudio();
     wsRef.current.send(JSON.stringify({ type: "tts_text", text: textToSend }));
   };
@@ -975,263 +990,348 @@ registerProcessor("tts-player", TtsPlayerProcessor);
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         setMicDevices(devices.filter((d) => d.kind === "audioinput"));
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
     void loadDevices();
   }, []);
 
+  // Helper: get the last agent message for the transcript bubble
+  const lastAgentMessage = [...messages].reverse().find(
+    (m) => m.role !== "human" && m.role !== "interrupt" && !m.content.startsWith("Routing to")
+  );
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-28">
-      <div className="mx-auto max-w-3xl px-6 py-10 space-y-8">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-semibold">Voice Agents (Web)</h1>
-          <p className="text-zinc-300">
-            Record audio in the browser, send it to the Python WS server, and display the agent output.
-          </p>
-        </header>
-
-        <section className="rounded-xl border border-zinc-800 p-5 space-y-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-400">WebSocket URL</label>
-            <input
-              className="rounded-md bg-zinc-900 border border-zinc-800 px-3 py-2 text-sm"
-              value={wsUrl}
-              onChange={(e) => setWsUrl(e.target.value)}
-            />
+    <div className="h-screen flex flex-col overflow-hidden bg-rh-gray-95 text-rh-gray-10">
+      {/* ─── Nav Bar ─────────────────────────────────────────────────── */}
+      <nav className="flex-none h-14 flex items-center px-6 border-b border-rh-gray-80 bg-rh-gray-95">
+        <div className="flex items-center gap-3">
+          {/* Red Hat icon */}
+          <div className="flex items-center gap-1">
+            <div className="w-5 h-1 bg-rh-red rounded-sm" />
+            <div className="w-2 h-2 bg-rh-red rounded-sm" />
           </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-400">Microphone</label>
-            <select
-              className="rounded-md bg-zinc-900 border border-zinc-800 px-3 py-2 text-sm"
-              value={micDeviceId}
-              onChange={(e) => setMicDeviceId(e.target.value)}
-            >
-              <option value="default">Default</option>
-              {micDevices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label || `Mic (${d.deviceId.slice(0, 8)}…)`}
-                </option>
-              ))}
-            </select>
-            <div className="text-xs text-zinc-500">
-              If you see “Requested device not found”, pick “Default” or re-select your mic.
-            </div>
+          <h1 className="text-lg font-bold" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>
+            Red Hat Pizza Shop
+          </h1>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {/* Connection indicator */}
+          <div className="flex items-center gap-2 text-xs">
+            <div className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-rh-gray-50"}`} />
+            <span className="text-rh-gray-40">{connected ? "Connected" : "Disconnected"}</span>
           </div>
+          {/* Controls toggle */}
+          <button
+            onClick={() => setControlsOpen(!controlsOpen)}
+            className="text-xs px-3 py-1.5 rounded border border-rh-gray-70 text-rh-gray-40 hover:text-white hover:border-rh-gray-50 transition-colors"
+          >
+            Controls {controlsOpen ? "\u25B2" : "\u25BC"}
+          </button>
+        </div>
+      </nav>
 
-          <div className="flex gap-2 flex-wrap">
-            <button
-              className="rounded-md bg-zinc-100 text-zinc-900 px-3 py-2 text-sm disabled:opacity-50"
-              onClick={connect}
-              disabled={connected}
-            >
-              Connect
-            </button>
-            <button
-              className="rounded-md border border-zinc-700 px-3 py-2 text-sm disabled:opacity-50"
-              onClick={disconnect}
-              disabled={!connected}
-            >
-              Disconnect
-            </button>
-          </div>
-
-          <div className="text-sm text-zinc-400">
-            Status: <span className="text-zinc-200">{status}</span> | Connected:{" "}
-            <span className="text-zinc-200">{String(connected)}</span>
-          </div>
-
-          {error ? (
-            <div className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-              {error}
-            </div>
-          ) : null}
-        </section>
-
-        <details className="rounded-xl border border-zinc-800 p-5 space-y-4">
-          <summary className="font-semibold cursor-pointer select-none">
-            Quick Test (No Mic Needed)
-            <span className="ml-2 text-xs text-zinc-500 font-normal">
-              (expand)
-            </span>
-          </summary>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-400">Send text into the agent graph</label>
-            <textarea
-              className="min-h-[72px] rounded-md bg-zinc-900 border border-zinc-800 px-3 py-2 text-sm"
-              value={textToSend}
-              onChange={(e) => setTextToSend(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <button
-                className="rounded-md bg-zinc-100 text-zinc-900 px-3 py-2 text-sm disabled:opacity-50"
-                onClick={sendText}
-                disabled={!connected}
-              >
-                Send Text
-              </button>
-              <button
-                className="rounded-md border border-zinc-700 px-3 py-2 text-sm disabled:opacity-50"
-                onClick={speakStream}
-                disabled={!connected}
-              >
-                Stream TTS Only
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-400">Upload a WAV file to transcribe + run graph</label>
-            <input
-              className="text-sm"
-              type="file"
-              accept="audio/wav"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void sendWavFile(f);
-              }}
-              disabled={!connected}
-            />
-            <p className="text-xs text-zinc-500">
-              Tip: This is the easiest way to validate audio in environments where mic permissions aren’t available.
-            </p>
-          </div>
-        </details>
-
-        <section className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-zinc-800 p-5 space-y-2">
-            <h2 className="font-semibold">Transcript</h2>
-            <div className="text-sm text-zinc-200 whitespace-pre-wrap">{transcript || "(none yet)"}</div>
-          </div>
-          <div className="rounded-xl border border-zinc-800 p-5 space-y-2">
-            <h2 className="font-semibold">Extracted State</h2>
-            <div className="text-sm text-zinc-200">pizza_type: {pizzaType || "(not extracted)"}</div>
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-zinc-800 p-5 space-y-2">
-          <h2 className="font-semibold">Playback</h2>
-          <div className="text-xs text-zinc-400">
-            TTS stream: <span className="text-zinc-200">{ttsStreamStatus}</span> | buffered:{" "}
-            <span className="text-zinc-200">{ttsStreamBufferedMs.toFixed(0)}ms</span>
-            {" "} | min/max:{" "}
-            <span className="text-zinc-200">
-              {ttsStreamMinBufferedMs.toFixed(0)}ms / {ttsStreamMaxBufferedMs.toFixed(0)}ms
-            </span>
-            {" "} | underruns: <span className="text-zinc-200">{ttsStreamUnderruns}</span>
-            {" "} | rebuffers: <span className="text-zinc-200">{ttsStreamRebuffers}</span>
-            {" "} | gen x: <span className="text-zinc-200">{ttsGenRealtimeX.toFixed(2)}</span>
-            {" "} | ttft: <span className="text-zinc-200">{ttsTtftMs ? `${ttsTtftMs}ms` : "-"}</span>
-            {" "} | ttfb: <span className="text-zinc-200">{ttsTtfbMs ? `${ttsTtfbMs}ms` : "-"}</span>
-            {" "} | chunks: <span className="text-zinc-200">{ttsStreamChunks}</span>
-            {" "} | bytes: <span className="text-zinc-200">{ttsStreamBytes}</span>
-            {" "} | frames: <span className="text-zinc-200">{ttsStreamFrames}</span>
-            {" "} | outHz: <span className="text-zinc-200">{ttsOutSampleRate || "-"}</span>
-          </div>
-          <details className="pt-1">
-            <summary className="cursor-pointer select-none text-sm text-zinc-300">
-              Playback controls
-              <span className="ml-2 text-xs text-zinc-500">(expand)</span>
-            </summary>
-            <div className="pt-3 space-y-2">
-              <button
-                className="rounded-md border border-zinc-700 px-3 py-2 text-sm w-fit"
-                onClick={() => stopTtsStream({ resetStats: true })}
-              >
-                Stop playback
-              </button>
-
-              <div className="pt-2 border-t border-zinc-800">
-                <div className="text-sm text-zinc-200 font-medium">Stream recording</div>
-                <label className="mt-2 flex items-center gap-2 text-sm text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={ttsRecordEnabled}
-                    onChange={(e) => setTtsRecordEnabled(e.target.checked)}
-                  />
-                  Record streamed TTS to WAV (captures exactly what the model sent)
-                </label>
-
-                {ttsRecordedUrl ? (
-                  <div className="mt-3 space-y-2">
-                    <div className="text-xs text-zinc-400">
-                      Recorded:{" "}
-                      <span className="text-zinc-200">
-                        {(ttsRecordedDurationMs / 1000).toFixed(2)}s
-                      </span>{" "}
-                      @ <span className="text-zinc-200">{ttsRecordedSampleRate || "-"}</span> Hz •{" "}
-                      <span className="text-zinc-200">{ttsRecordedBytes}</span> bytes
-                    </div>
-                    <audio src={ttsRecordedUrl} controls className="w-full" />
-                    <div className="flex gap-2 flex-wrap">
-                      <a
-                        className="rounded-md border border-zinc-700 px-3 py-2 text-sm w-fit"
-                        href={ttsRecordedUrl}
-                        download={ttsRecordedFilename || "tts-stream.wav"}
-                      >
-                        Download recorded WAV
-                      </a>
-                      <button
-                        className="rounded-md border border-zinc-700 px-3 py-2 text-sm w-fit"
-                        onClick={clearTtsRecording}
-                      >
-                        Clear recording
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 text-xs text-zinc-500">
-                    No recording yet. Run “stream tts only” to generate one.
-                  </div>
-                )}
+      {/* ─── Controls Panel (collapsible) ────────────────────────────── */}
+      {controlsOpen && (
+        <div className="flex-none border-b border-rh-gray-80 bg-rh-gray-90 px-6 py-4 animate-fade-in-up">
+          <div className="max-w-5xl mx-auto grid gap-4 md:grid-cols-3">
+            {/* Connection */}
+            <div className="space-y-2">
+              <label className="text-xs text-rh-gray-40 uppercase tracking-wider font-semibold">WebSocket URL</label>
+              <input
+                className="w-full rounded bg-rh-gray-95 border border-rh-gray-70 px-3 py-2 text-sm text-white placeholder-rh-gray-50 focus:border-rh-red focus:ring-1 focus:ring-rh-red focus:outline-none"
+                value={wsUrl}
+                onChange={(e) => setWsUrl(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button
+                  className="rounded bg-rh-red text-white px-3 py-1.5 text-xs font-semibold hover:bg-rh-red-dark disabled:opacity-40 transition-colors"
+                  onClick={connect}
+                  disabled={connected}
+                >
+                  Connect
+                </button>
+                <button
+                  className="rounded border border-rh-gray-70 text-rh-gray-40 px-3 py-1.5 text-xs hover:text-white disabled:opacity-40 transition-colors"
+                  onClick={disconnect}
+                  disabled={!connected}
+                >
+                  Disconnect
+                </button>
               </div>
             </div>
-          </details>
-        </section>
 
-        <section className="rounded-xl border border-zinc-800 p-5 space-y-3">
-          <h2 className="font-semibold">Conversation</h2>
-          <div className="space-y-2">
-            {messages.length ? (
-              messages.map((m, i) => (
-                <div key={i} className="rounded-md bg-zinc-900 border border-zinc-800 p-3">
-                  <div className="text-xs text-zinc-400">{m.role}</div>
-                  <div className="text-sm text-zinc-100 whitespace-pre-wrap">{m.content}</div>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-zinc-300">(no messages yet)</div>
+            {/* Microphone */}
+            <div className="space-y-2">
+              <label className="text-xs text-rh-gray-40 uppercase tracking-wider font-semibold">Microphone</label>
+              <select
+                className="w-full rounded bg-rh-gray-95 border border-rh-gray-70 px-3 py-2 text-sm text-white focus:border-rh-red focus:outline-none"
+                value={micDeviceId}
+                onChange={(e) => setMicDeviceId(e.target.value)}
+              >
+                <option value="default">Default</option>
+                {micDevices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `Mic (${d.deviceId.slice(0, 8)}\u2026)`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Quick Test */}
+            <div className="space-y-2">
+              <label className="text-xs text-rh-gray-40 uppercase tracking-wider font-semibold">Quick Test</label>
+              <textarea
+                className="w-full min-h-[56px] rounded bg-rh-gray-95 border border-rh-gray-70 px-3 py-2 text-sm text-white placeholder-rh-gray-50 focus:border-rh-red focus:outline-none resize-none"
+                value={textToSend}
+                onChange={(e) => setTextToSend(e.target.value)}
+                rows={2}
+              />
+              <div className="flex gap-2">
+                <button
+                  className="rounded bg-rh-red text-white px-3 py-1.5 text-xs font-semibold hover:bg-rh-red-dark disabled:opacity-40 transition-colors"
+                  onClick={sendText}
+                  disabled={!connected}
+                >
+                  Send Text
+                </button>
+                <button
+                  className="rounded border border-rh-gray-70 text-rh-gray-40 px-3 py-1.5 text-xs hover:text-white disabled:opacity-40 transition-colors"
+                  onClick={speakStream}
+                  disabled={!connected}
+                >
+                  TTS Only
+                </button>
+                <label className="rounded border border-rh-gray-70 text-rh-gray-40 px-3 py-1.5 text-xs hover:text-white cursor-pointer transition-colors">
+                  Upload WAV
+                  <input
+                    type="file"
+                    accept="audio/wav"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void sendWavFile(f);
+                    }}
+                    disabled={!connected}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Playback stats row */}
+          <div className="max-w-5xl mx-auto mt-3 pt-3 border-t border-rh-gray-70">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-rh-gray-40">
+              <span>TTS: <span className="text-rh-gray-20">{ttsStreamStatus}</span></span>
+              <span>Buffered: <span className="text-rh-gray-20">{ttsStreamBufferedMs.toFixed(0)}ms</span></span>
+              <span>Min/Max: <span className="text-rh-gray-20">{ttsStreamMinBufferedMs.toFixed(0)}/{ttsStreamMaxBufferedMs.toFixed(0)}ms</span></span>
+              <span>Underruns: <span className="text-rh-gray-20">{ttsStreamUnderruns}</span></span>
+              <span>Rebuffers: <span className="text-rh-gray-20">{ttsStreamRebuffers}</span></span>
+              <span>Gen: <span className="text-rh-gray-20">{ttsGenRealtimeX.toFixed(2)}x</span></span>
+              <span>TTFT: <span className="text-rh-gray-20">{ttsTtftMs ? `${ttsTtftMs}ms` : "-"}</span></span>
+              <span>TTFB: <span className="text-rh-gray-20">{ttsTtfbMs ? `${ttsTtfbMs}ms` : "-"}</span></span>
+              <span>Chunks: <span className="text-rh-gray-20">{ttsStreamChunks}</span></span>
+              <span>Bytes: <span className="text-rh-gray-20">{ttsStreamBytes}</span></span>
+              <span>outHz: <span className="text-rh-gray-20">{ttsOutSampleRate || "-"}</span></span>
+              {ttsRecordedUrl && (
+                <>
+                  <span>Recorded: <span className="text-rh-gray-20">{(ttsRecordedDurationMs / 1000).toFixed(2)}s</span></span>
+                  <a href={ttsRecordedUrl} download={ttsRecordedFilename} className="text-rh-red hover:underline">Download WAV</a>
+                </>
+              )}
+              <button onClick={() => stopTtsStream({ resetStats: true })} className="text-rh-red hover:underline">Stop Playback</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Main Content ────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+        {/* ─── Left: Pizza + Action Buttons ──────────────────────────── */}
+        <div className="flex-none lg:w-[420px] flex flex-col items-center justify-center p-6 lg:p-10 gap-6">
+          {/* Pizza character */}
+          <div className="relative">
+            <TalkingPizza
+              isTalking={isSpeaking}
+              className="w-48 h-48 lg:w-64 lg:h-64 drop-shadow-2xl"
+            />
+            {isSpeaking && (
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-rh-red"
+                    style={{
+                      animation: `pulse-red 1s ${i * 0.2}s infinite`,
+                    }}
+                  />
+                ))}
+              </div>
             )}
           </div>
-        </section>
-      </div>
 
-      {/* Bottom recording controls */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-zinc-800 bg-zinc-950/90 backdrop-blur">
-        <div className="mx-auto max-w-3xl px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-xs text-zinc-400">
-            Recording controls • Status: <span className="text-zinc-200">{status}</span>
+          {/* Agent transcript bubble */}
+          {lastAgentMessage && (
+            <div className="max-w-xs text-center bg-rh-gray-90 border border-rh-gray-70 rounded-2xl px-4 py-3 text-sm text-rh-gray-20 animate-fade-in-up relative">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-rh-gray-90 border-l border-t border-rh-gray-70 rotate-45" />
+              <span className="relative">{lastAgentMessage.content}</span>
+            </div>
+          )}
+
+          {/* Status line */}
+          <div className="text-xs text-rh-gray-50">
+            {status === "recording" ? (
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rh-red animate-pulse-red" />
+                Recording...
+              </span>
+            ) : (
+              status
+            )}
           </div>
-          <div className="flex gap-2 flex-wrap">
+
+          {/* Big action buttons */}
+          <div className="flex gap-4">
             <button
-              className="rounded-md bg-emerald-500 text-black px-3 py-2 text-sm disabled:opacity-50"
-              onClick={startRecording}
+              className="rounded-xl px-8 py-4 text-lg font-bold transition-all disabled:opacity-30
+                bg-rh-green text-white hover:bg-rh-green-dark
+                shadow-lg hover:shadow-xl active:scale-95"
+              style={{ minWidth: 120 }}
+              onClick={() => {
+                void primeTtsAudio();
+                startRecording();
+              }}
               disabled={!connected || status === "recording"}
             >
-              Start Recording
+              TALK
             </button>
             <button
-              className="rounded-md bg-amber-500 text-black px-3 py-2 text-sm disabled:opacity-50"
+              className="rounded-xl px-8 py-4 text-lg font-bold transition-all disabled:opacity-30
+                bg-rh-red text-white hover:bg-rh-red-dark
+                shadow-lg hover:shadow-xl active:scale-95"
+              style={{ minWidth: 120 }}
               onClick={stopAndSend}
               disabled={!connected || status !== "recording"}
             >
-              Stop & Send
+              SEND
             </button>
+          </div>
+
+          {/* Text input for typing */}
+          <div className="w-full max-w-xs flex gap-2">
+            <input
+              className="flex-1 rounded-lg bg-rh-gray-90 border border-rh-gray-70 px-3 py-2 text-sm text-white placeholder-rh-gray-50 focus:border-rh-red focus:ring-1 focus:ring-rh-red focus:outline-none"
+              placeholder="Type a message..."
+              value={textToSend}
+              onChange={(e) => setTextToSend(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendText();
+                }
+              }}
+            />
+            <button
+              className="rounded-lg bg-rh-red text-white px-4 py-2 text-sm font-semibold hover:bg-rh-red-dark disabled:opacity-40 transition-colors"
+              onClick={sendText}
+              disabled={!connected}
+            >
+              Send
+            </button>
+          </div>
+
+          {/* Error display */}
+          {error && (
+            <div className="w-full max-w-xs rounded-lg border border-red-900 bg-rh-red-bg/60 px-3 py-2 text-xs text-red-200">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* ─── Right: Transcript + Conversation ──────────────────────── */}
+        <div className="flex-1 flex flex-col overflow-hidden border-l border-rh-gray-80">
+
+          {/* Agent Transcript */}
+          <div className="flex-none border-b border-rh-gray-80">
+            <div className="px-6 py-3 border-b border-rh-gray-80 flex items-center justify-between">
+              <h2 className="text-sm font-semibold" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>
+                Agent Transcript
+              </h2>
+              {pizzaType && (
+                <span className="text-xs px-2 py-0.5 rounded bg-rh-red/20 text-rh-red border border-rh-red/30">
+                  {pizzaType}
+                </span>
+              )}
+            </div>
+            <div className="px-6 py-3 max-h-32 overflow-y-auto rh-scroll">
+              <p className="text-sm text-rh-gray-20 whitespace-pre-wrap">
+                {transcript || "Waiting for speech..."}
+              </p>
+            </div>
+          </div>
+
+          {/* Conversation History */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-none px-6 py-3 border-b border-rh-gray-80">
+              <h2 className="text-sm font-semibold" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>
+                Conversation History
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto rh-scroll px-6 py-4 space-y-3">
+              {messages.length ? (
+                messages.filter((m) => m.role !== "interrupt").map((m, i) => {
+                  const isHuman = m.role === "human";
+                  const isRouting = m.content.startsWith("Routing to");
+                  if (isRouting) {
+                    return (
+                      <div key={i} className="flex justify-center">
+                        <span className="text-xs text-rh-gray-50 bg-rh-gray-90 px-3 py-1 rounded-full">
+                          {m.content}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={i} className={`flex ${isHuman ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                          isHuman
+                            ? "bg-rh-red/15 border border-rh-red/20 text-rh-gray-10"
+                            : "bg-rh-gray-90 border border-rh-gray-70 text-rh-gray-20"
+                        }`}
+                      >
+                        <div className="text-[10px] uppercase tracking-wider text-rh-gray-50 mb-1 font-semibold">
+                          {m.role}
+                        </div>
+                        <div className="text-sm whitespace-pre-wrap">{m.content}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-rh-gray-50 text-sm">
+                  Say something to start a conversation...
+                </div>
+              )}
+              {waiting && (
+                <div className="flex justify-start">
+                  <div className="bg-rh-gray-90 border border-rh-gray-70 rounded-2xl px-5 py-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 animate-spin text-rh-red" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span className="text-sm text-rh-gray-40">Thinking...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
         </div>
       </div>
+
+      {/* ─── Red Hat gradient divider at bottom ──────────────────────── */}
+      <div className="flex-none h-px bg-gradient-to-r from-rh-red via-rh-red/20 to-transparent" />
     </div>
   );
 }
