@@ -1,0 +1,17 @@
+{{- if .Values.mlflow.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ai-voice-agent.fullname" . }}-mlflow
+  labels:
+    {{- include "ai-voice-agent.mlflow.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.mlflow.persistence.size }}
+  {{- if .Values.mlflow.persistence.storageClass }}
+  storageClassName: {{ .Values.mlflow.persistence.storageClass | quote }}
+  {{- end }}
+{{- end }}

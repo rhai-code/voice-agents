@@ -42,3 +42,14 @@ app.kubernetes.io/component: backend
 app.kubernetes.io/name: {{ include "ai-voice-agent.fullname" . }}-frontend
 app.kubernetes.io/component: frontend
 {{- end }}
+
+{{- define "ai-voice-agent.mlflow.labels" -}}
+{{ include "ai-voice-agent.labels" . }}
+app.kubernetes.io/name: {{ include "ai-voice-agent.fullname" . }}-mlflow
+app.kubernetes.io/component: mlflow
+{{- end }}
+
+{{- define "ai-voice-agent.mlflow.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "ai-voice-agent.fullname" . }}-mlflow
+app.kubernetes.io/component: mlflow
+{{- end }}

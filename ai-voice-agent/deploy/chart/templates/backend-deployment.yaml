@@ -24,8 +24,13 @@ spec:
               protocol: TCP
           env:
             {{- range $key, $val := .Values.backend.env }}
+            {{- if and (eq $key "MLFLOW_TRACKING_URI") (not $val) $.Values.mlflow.enabled }}
+            - name: MLFLOW_TRACKING_URI
+              value: {{ printf "http://%s-mlflow:%v" (include "ai-voice-agent.fullname" $) $.Values.mlflow.port | quote }}
+            {{- else }}
             - name: {{ $key }}
               value: {{ $val | quote }}
+            {{- end }}
             {{- end }}
             - name: API_KEY
               valueFrom:

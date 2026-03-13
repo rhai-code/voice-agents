@@ -46,6 +46,36 @@ frontend:
       cpu: 500m
       memory: 256Mi
 
+mlflow:
+  enabled: true
+  image:
+    repository: ghcr.io/mlflow/mlflow
+    tag: v3.1.0
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 5500
+  args:
+    - "mlflow"
+    - "server"
+    - "--host"
+    - "0.0.0.0"
+    - "--port"
+    - "5500"
+    - "--backend-store-uri"
+    - "/mlflow/mlruns"
+    - "--default-artifact-root"
+    - "/mlflow/mlartifacts"
+  persistence:
+    size: 5Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
 route:
   enabled: true
   host: ""
