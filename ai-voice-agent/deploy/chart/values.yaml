@@ -65,6 +65,8 @@ mlflow:
     - "/mlflow/mlruns"
     - "--default-artifact-root"
     - "/mlflow/mlartifacts"
+    - "--allowed-hosts"
+    - "*"
   persistence:
     size: 5Gi
     storageClass: ""
@@ -74,7 +76,7 @@ mlflow:
       memory: 256Mi
     limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 1024Mi
 
 route:
   enabled: true
