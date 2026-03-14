@@ -16,7 +16,7 @@ ui:
     - path: ./content/supplemental-ui
 
 output:
-  dir: ./site
+  dir: ./www
 
 asciidoc:
   attributes:
