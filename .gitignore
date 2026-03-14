@@ -4,3 +4,4 @@ __pycache__/
 output_voice_clone.wav
 venv/
 node_modules/
+site/
