@@ -1,0 +1,29 @@
+# Showroom UI Configuration
+# This file defines the tabs shown in the Showroom UI alongside your lab instructions
+
+# Content directory (default content/)
+content:
+
+# Tabs configuration
+tabs:
+  - name: Terminal
+    port: 8080
+    path: /terminal
+
+  - name: OpenShift Console
+    url: https://console-openshift-console.apps.{{ guid }}.{{ cluster_dns_zone }}
+
+  - name: JupyterLab
+    url: https://data-science-gateway.apps.{{ guid }}.{{ cluster_dns_zone }}
+
+# Layout configuration (default: 50/50 split)
+layout:
+  # Options: 50-50, 40-60, 60-40
+  type: 50-50
+
+# Variables that can be substituted in content
+variables:
+  guid: "{{ guid }}"
+  cluster_dns_zone: "{{ cluster_dns_zone }}"
+  ocp_username: "{{ ocp_username }}"
+  ocp_password: "{{ ocp_password }}"

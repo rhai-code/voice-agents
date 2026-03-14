@@ -3,3 +3,4 @@ __pycache__/
 .ruff_cache/
 output_voice_clone.wav
 venv/
+node_modules/

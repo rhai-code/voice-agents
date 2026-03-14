@@ -1,3 +1,0 @@
-# Llama Stack
-
-Using LlamaStack.

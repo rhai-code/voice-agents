@@ -12,15 +12,6 @@ A voice agent demo simulating "Pizza Palace" - ordering a pizza.
 - Python websocket server backend
 - (Optional) MLFlow tracing
 
-## 🏃‍♀️ Running the docs site
-
-If you have Node installed, you can start the site with the following command from within the `top directory of the git repo` directory:
-
-```bash
-npm i docsify-cli -g
-docsify serve docs/
-```
-
 ## Helm Install
 
 Deploy the voice agent stack (backend, frontend, MLflow) to OpenShift/Kubernetes:
@@ -58,4 +49,37 @@ In an OpenShift cluster
 ```bash
 oc apply -f odh-document.yaml
 oc -n redhat-ods-applications delete pod -l app=rhods-dashboard
+```
+
+## 🏃‍♀️ Running the docs site
+
+This repository follows the https://github.com/rhpds/showroom_template_nookbag[Showroom template format] using AsciiDoc content with Antora for building.
+
+### Structure
+
+
+```bash
+.
+├── README.adoc                      # This file
+├── site.yml                         # Antora site configuration
+├── ui-config.yml                    # Showroom UI configuration (tabs, terminals, etc.)
+└── content/modules/ROOT/
+    ├── nav.adoc                     # Navigation for the workshop
+    ├── pages/                       # Lab instruction content
+    └── assets/images/               # Images used in the lab
+```
+
+### Local Preview
+
+To preview the content locally:
+
+```bash
+npm install -g @antora/cli @antora/site-generator-default
+antora site.yml --stacktrace
+```
+
+Or using the Antora container image:
+
+```bash
+docker run --rm -v $PWD:/antora:Z antora/antora site.yml
 ```

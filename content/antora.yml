@@ -1,0 +1,5 @@
+name: voice-agents
+title: Voice Agents Lab
+version: master
+nav:
+  - modules/ROOT/nav.adoc

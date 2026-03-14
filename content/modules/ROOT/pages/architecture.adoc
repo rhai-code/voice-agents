@@ -1,0 +1,6 @@
+= Architecture
+:source-highlighter: rouge
+:icons: font
+:imagesdir: ../images
+
+Discover the basic architecture for our voice agent application.

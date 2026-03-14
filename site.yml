@@ -1,0 +1,30 @@
+site:
+  title: Voice Agents Lab
+  start_page: voice-agents::index.adoc
+
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: content
+
+ui:
+  bundle:
+    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/patternfly-6/ui-bundle.zip
+    snapshot: true
+  supplemental_files:
+    - path: ./content/supplemental-ui
+
+output:
+  dir: ./site
+
+asciidoc:
+  attributes:
+    page-pagination: true
+    sectlinks: true
+    sectanchors: true
+    icons: font
+    source-highlighter: highlight.js
+    toc: left
+    toclevels: 3
+    numbered: true

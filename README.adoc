@@ -1,0 +1,38 @@
+= Voice Agents Lab
+
+A web-based lab instruction platform for learning about voice AI agents using RHOAI (Red Hat OpenShift AI).
+
+This repository follows the https://github.com/rhpds/showroom_template_nookbag[Showroom template format] using AsciiDoc content with Antora for building.
+
+== Structure
+
+[source]
+----
+.
+├── README.adoc                      # This file
+├── site.yml                         # Antora site configuration
+├── ui-config.yml                    # Showroom UI configuration (tabs, terminals, etc.)
+└── content/modules/ROOT/
+    ├── nav.adoc                     # Navigation for the workshop
+    ├── pages/                       # Lab instruction content
+    └── assets/images/               # Images used in the lab
+----
+
+== Local Preview
+
+To preview the content locally:
+
+[source,bash]
+----
+npm install -g @antora/cli @antora/site-generator-default
+antora site.yml --stacktrace
+----
+
+Or using the Antora container image:
+
+[source,bash]
+----
+docker run --rm -v $PWD:/antora:Z antora/antora site.yml
+----
+
+// vim: set textwidth=80 shiftwidth=2 tabstop=2:
