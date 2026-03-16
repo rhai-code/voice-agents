@@ -3,7 +3,7 @@ apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
 metadata:
   annotations:
-    opendatahub.io/hardware-profile-name: h200-borrowed-18g
+    opendatahub.io/hardware-profile-name: unreserved-mig-18gb
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/model-type: generative
     openshift.io/display-name: whisper
@@ -29,7 +29,7 @@ spec:
     - name: main
       env:
         - name: VLLM_ADDITIONAL_ARGS
-          value: "--gpu-memory-utilization 0.18"
+          value: "--gpu-memory-utilization 0.95" # "--gpu-memory-utilization 0.18"
       resources:
         limits:
           cpu: "2"

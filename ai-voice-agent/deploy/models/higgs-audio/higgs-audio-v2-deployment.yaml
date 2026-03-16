@@ -19,7 +19,7 @@ metadata:
     app: higgs-audio-predictor
     component: predictor
     kueue.x-k8s.io/managed: "true"
-    kueue.x-k8s.io/queue-name: h200-borrowed
+    kueue.x-k8s.io/queue-name: unreserved
     opendatahub.io/dashboard: "true"
     opendatahub.io/genai-asset: "true"
     monitoring.opendatahub.io/scrape: "true"
@@ -36,7 +36,7 @@ spec:
         app: higgs-audio-predictor
         component: predictor
         kueue.x-k8s.io/managed: "true"
-        kueue.x-k8s.io/queue-name: h200-borrowed
+        kueue.x-k8s.io/queue-name: unreserved
         opendatahub.io/dashboard: "true"
         opendatahub.io/genai-asset: "true"
       annotations:
