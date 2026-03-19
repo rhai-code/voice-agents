@@ -2,3 +2,4 @@
 resources:
   - whisper/whisper-llmisvc.yaml
   - higgs-audio/higgs-audio-v2-deployment.yaml
+# llama4 is MaaS hosted and included for information only
