@@ -32,6 +32,10 @@ spec:
               value: {{ $val | quote }}
             {{- end }}
             {{- end }}
+            {{- if .Values.guardrails.enabled }}
+            - name: GUARDRAILS_URL
+              value: {{ .Values.guardrails.url | quote }}
+            {{- end }}
             - name: API_KEY
               valueFrom:
                 secretKeyRef:

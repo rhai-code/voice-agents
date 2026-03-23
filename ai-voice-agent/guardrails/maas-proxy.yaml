@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardrails-maas-proxy
+  labels:
+    app: guardrails-maas-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guardrails-maas-proxy
+  template:
+    metadata:
+      labels:
+        app: guardrails-maas-proxy
+    spec:
+      containers:
+      - name: maas-proxy
+        image: registry.redhat.io/ubi10/nginx-126:10.1
+        command: ["nginx", "-g", "daemon off;"]
+        ports:
+        - containerPort: 8081
+          protocol: TCP
+        - containerPort: 8033
+          protocol: TCP
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: guardrails-maas-proxy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guardrails-maas-proxy
+  labels:
+    app: guardrails-maas-proxy
+spec:
+  selector:
+    app: guardrails-maas-proxy
+  ports:
+  - port: 8081
+    targetPort: 8081
+    protocol: TCP
+    name: maas
+  - port: 8033
+    targetPort: 8033
+    protocol: TCP
+    name: orchestrator
+  type: ClusterIP

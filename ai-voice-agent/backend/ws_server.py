@@ -22,6 +22,7 @@ Protocol (server -> client):
 import asyncio
 import base64
 import json
+import logging
 import os
 import re
 import signal
@@ -35,8 +36,12 @@ from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from websockets.exceptions import ConnectionClosed
 
+# Suppress noisy "opening handshake failed" from k8s tcpSocket probes
+logging.getLogger("websockets").setLevel(logging.CRITICAL)
+
 from src.content_utils import normalize_content_to_text
 from src.graph import build_graph
+from src.nodes import GUARDRAILS_URL
 from src.tools import (
     TTS_SAMPLE_RATE,
     convert_speech_to_text,
@@ -86,7 +91,8 @@ def _safe_messages(result: dict) -> list[dict[str, str]]:
     return msgs
 
 
-GRAPH = build_graph()
+GRAPH = build_graph(guardrails_enabled=False)
+GRAPH_GUARDRAILS = build_graph(guardrails_enabled=True) if GUARDRAILS_URL else None
 
 
 def _interrupt_values(result: dict) -> list[Any]:
@@ -125,12 +131,13 @@ def _select_tts_text(result: dict) -> str:
     return ""
 
 
-async def _invoke_graph(inputs: Any, config: dict) -> dict:
+async def _invoke_graph(inputs: Any, config: dict, guardrails: bool = False) -> dict:
     """Invoke graph in a thread to avoid blocking the WS event loop."""
     callbacks = _mlflow_callbacks()
     if callbacks:
         config = {**config, "callbacks": callbacks}
-    return await asyncio.to_thread(GRAPH.invoke, inputs, config)
+    graph = (GRAPH_GUARDRAILS if guardrails and GRAPH_GUARDRAILS else GRAPH)
+    return await asyncio.to_thread(graph.invoke, inputs, config)
 
 
 async def _tts_payload(text: str) -> dict:
@@ -185,7 +192,10 @@ async def _tts_stream(ws, text: str) -> None:
 
 async def handler(ws) -> None:
     awaiting_resume = False
+    guardrails_enabled = False
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    # Tell the client whether guardrails are available (GUARDRAILS_URL is set).
+    await ws.send(json.dumps({"type": "guardrails_available", "available": bool(GUARDRAILS_URL)}))
     while True:
         try:
             raw = await ws.recv()
@@ -207,7 +217,7 @@ async def handler(ws) -> None:
                     if awaiting_resume
                     else {"messages": [HumanMessage(content=text)]}
                 )
-                result = await _invoke_graph(inputs, config)
+                result = await _invoke_graph(inputs, config, guardrails=guardrails_enabled)
                 interrupt_values = _interrupt_values(result)
                 awaiting_resume = bool(interrupt_values)
                 await ws.send(
@@ -246,7 +256,7 @@ async def handler(ws) -> None:
                         else {"messages": [HumanMessage(content=text)]}
                     )
                     result = await asyncio.wait_for(
-                        _invoke_graph(inputs, config), timeout=45
+                        _invoke_graph(inputs, config, guardrails=guardrails_enabled), timeout=45
                     )
                 except asyncio.TimeoutError:
                     await ws.send(
@@ -299,6 +309,10 @@ async def handler(ws) -> None:
                             {"type": "error", "error": f"TTS stream failed: {exc}"}
                         )
                     )
+            elif msg_type == "set_guardrails":
+                guardrails_enabled = bool(data.get("enabled", False))
+                print(f"[ws] guardrails={'ON' if guardrails_enabled else 'OFF'}", flush=True)
+                await ws.send(json.dumps({"type": "guardrails_status", "enabled": guardrails_enabled}))
             else:
                 await ws.send(
                     json.dumps({"type": "error", "error": f"Unknown type: {msg_type}"})

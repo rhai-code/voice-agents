@@ -84,6 +84,12 @@ mlflow:
       pullPolicy: Always
     cookieSecret: ""
 
+guardrails:
+  enabled: false
+  # URL of the guardrails orchestrator gateway service.
+  # Only used when enabled=true.
+  url: "http://guardrails-maas-proxy:8033/v1"
+
 route:
   enabled: true
   host: ""

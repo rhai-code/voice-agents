@@ -1,0 +1,59 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guardrails-orchestrator-config
+data:
+  config.yaml: |
+    chunkers:
+      sentence:
+        type: sentence
+        service:
+            hostname: chunker-service
+            port: 8085
+    openai:
+      service:
+        hostname: guardrails-maas-proxy
+        port: 8081
+    detectors:
+      gibberish-detector:
+        type: text_contents
+        service:
+          hostname: gibberish-detector-predictor
+          port: 8000
+        chunker_id: sentence
+        default_threshold: 0.5
+      ibm-hate-and-profanity-detector:
+        type: text_contents
+        service:
+          hostname: ibm-hate-and-profanity-detector-predictor
+          port: 8000
+        chunker_id: sentence
+        default_threshold: 0.5
+      # Old jailbreak detector (jackhhao/jailbreak-classifier) — kept for reference.
+      # To swap back: uncomment and replace prompt-injection-detector in backend code.
+      # jailbreak-detector:
+      #   type: text_contents
+      #   service:
+      #     hostname: jailbreak-detector-predictor
+      #     port: 8000
+      #   chunker_id: sentence
+      #   default_threshold: 0.5
+      prompt-injection-detector:
+        type: text_contents
+        service:
+          hostname: prompt-injection-detector-predictor
+          port: 8000
+        chunker_id: sentence
+        default_threshold: 0.5
+      built-in-detector:
+        type: text_contents
+        service:
+          hostname: 127.0.0.1
+          port: 8080
+        chunker_id: sentence
+        default_threshold: 0.5
+    passthrough_headers:
+      - Authorization
+      - x-forwarded-access-token
+    rewrite_forwarded_access_header: true

@@ -14,6 +14,8 @@ type WsMsg =
       messages: { role: string; content: string }[];
       interrupt?: any;
     }
+  | { type: "guardrails_available"; available: boolean }
+  | { type: "guardrails_status"; enabled: boolean }
   | { type: "error"; error: string };
 
 function pcmToWavBlob(pcm: Int16Array, sampleRate: number): Blob {
@@ -142,6 +144,8 @@ export default function Home() {
   const [micDeviceId, setMicDeviceId] = useState<string>("default");
   const [controlsOpen, setControlsOpen] = useState(false);
   const [waiting, setWaiting] = useState(false);
+  const [guardrailsAvailable, setGuardrailsAvailable] = useState(false);
+  const [guardrailsEnabled, setGuardrailsEnabled] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const ttsReceivingBinaryRef = useRef<boolean>(false);
@@ -478,6 +482,12 @@ export default function Home() {
           setPizzaType(msg.pizza_type);
           setMessages(msg.messages);
         }
+        if (msg.type === "guardrails_available") {
+          setGuardrailsAvailable(msg.available);
+        }
+        if (msg.type === "guardrails_status") {
+          setGuardrailsEnabled(msg.enabled);
+        }
         if (msg.type === "error") setError(msg.error);
       } catch (e) {
         console.error("WS message handling failed:", e);
@@ -594,6 +604,12 @@ export default function Home() {
     };
   }, []);
 
+  const toggleGuardrails = () => {
+    if (!connected || !wsRef.current) return;
+    const newState = !guardrailsEnabled;
+    wsRef.current.send(JSON.stringify({ type: "set_guardrails", enabled: newState }));
+  };
+
   const sendText = () => {
     setError("");
     if (!connected || !wsRef.current) {
@@ -676,6 +692,11 @@ export default function Home() {
             <div className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-rh-gray-50"}`} />
             <span className="text-rh-gray-40">{connected ? "Connected" : "Disconnected"}</span>
           </div>
+          {guardrailsAvailable && guardrailsEnabled && (
+            <span className="text-[10px] px-2 py-0.5 rounded bg-rh-red/20 text-rh-red border border-rh-red/30 font-semibold uppercase tracking-wider">
+              Guardrails
+            </span>
+          )}
           <button
             onClick={() => setControlsOpen(!controlsOpen)}
             className="text-xs px-3 py-1.5 rounded border border-rh-gray-70 text-rh-gray-40 hover:text-white hover:border-rh-gray-50 transition-colors"
@@ -688,7 +709,7 @@ export default function Home() {
       {/* ─── Controls Panel (collapsible) ────────────────────────── */}
       {controlsOpen && (
         <div className="flex-none border-b border-rh-gray-80 bg-rh-gray-90 px-6 py-4 animate-fade-in-up">
-          <div className="max-w-5xl mx-auto grid gap-4 md:grid-cols-3">
+          <div className={`max-w-5xl mx-auto grid gap-4 ${guardrailsAvailable ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
             <div className="space-y-2">
               <label className="text-xs text-rh-gray-40 uppercase tracking-wider font-semibold">WebSocket URL</label>
               <input
@@ -766,6 +787,36 @@ export default function Home() {
                 </label>
               </div>
             </div>
+            {guardrailsAvailable && (
+            <div className="space-y-2">
+              <label className="text-xs text-rh-gray-40 uppercase tracking-wider font-semibold">Guardrails</label>
+              <div className="flex items-center gap-3">
+                <button
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-rh-red focus:ring-offset-2 focus:ring-offset-rh-gray-90 disabled:opacity-40 ${
+                    guardrailsEnabled ? "bg-rh-red" : "bg-rh-gray-70"
+                  }`}
+                  onClick={toggleGuardrails}
+                  disabled={!connected}
+                  role="switch"
+                  aria-checked={guardrailsEnabled}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      guardrailsEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className={`text-sm font-medium ${guardrailsEnabled ? "text-rh-red" : "text-rh-gray-40"}`}>
+                  {guardrailsEnabled ? "ON" : "OFF"}
+                </span>
+              </div>
+              <p className="text-[10px] text-rh-gray-50">
+                {guardrailsEnabled
+                  ? "All detectors active (jailbreak, profanity, gibberish)"
+                  : "Direct LLM access (no content filtering)"}
+              </p>
+            </div>
+            )}
           </div>
           <div className="max-w-5xl mx-auto mt-3 pt-3 border-t border-rh-gray-70">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-rh-gray-40">

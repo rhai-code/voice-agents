@@ -14,4 +14,5 @@
 * xref:observability-intro.adoc[Observability]
 ** xref:mlflow.adoc[MLflow]
 ** xref:llamastack.adoc[LlamaStack]
+* xref:guardrails.adoc[Guardrails]
 * xref:advanced.adoc[Advanced]

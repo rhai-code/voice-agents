@@ -1,0 +1,19 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardrails-orchestrator
+spec:
+  template:
+    spec:
+      volumes:
+        - name: prometheus-multiproc-dir
+          emptyDir: {}
+      containers:
+        - name: guardrails-orchestrator-detectors
+          env:
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: /tmp/prometheus_multiproc
+          volumeMounts:
+            - name: prometheus-multiproc-dir
+              mountPath: /tmp/prometheus_multiproc

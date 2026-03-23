@@ -1,0 +1,15 @@
+---
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: GuardrailsOrchestrator
+metadata:
+  annotations:
+    security.opendatahub.io/enable-auth: 'true'
+  name: guardrails-orchestrator
+spec:
+  orchestratorConfig: guardrails-orchestrator-config
+  enableBuiltInDetectors: true
+  enableGuardrailsGateway: false
+  logLevel: DEBUG
+  replicas: 1
+  otelExporter:
+    otlpProtocol: grpc
