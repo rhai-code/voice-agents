@@ -81,5 +81,5 @@ antora site.yml --stacktrace
 Or using the Antora container image:
 
 ```bash
-docker run --rm -v $PWD:/antora:Z antora/antora site.yml
+podman run --rm -v $PWD:/antora:Z antora/antora site.yml
 ```

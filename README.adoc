@@ -32,7 +32,7 @@ Or using the Antora container image:
 
 [source,bash]
 ----
-docker run --rm -v $PWD:/antora:Z antora/antora site.yml
+podman run --rm -v $PWD:/antora:Z antora/antora site.yml
 ----
 
 // vim: set textwidth=80 shiftwidth=2 tabstop=2:
