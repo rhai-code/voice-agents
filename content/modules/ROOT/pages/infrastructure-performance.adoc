@@ -37,4 +37,4 @@ image::gen-x.png[Gen-X Performance Chart]
 
 == Client Architecture
 
-Javascript client architecture using link:https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer[SharedArrayBuffer] ring - shared-memory ring buffer (SharedArrayBuffer + Atomics) between main thread and worklet to eliminate per-chunk messaging entirely.
+Javascript client architecture using link:https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer[SharedArrayBuffer^] ring - shared-memory ring buffer (SharedArrayBuffer + Atomics) between main thread and worklet to eliminate per-chunk messaging entirely.

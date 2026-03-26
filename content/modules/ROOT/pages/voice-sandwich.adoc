@@ -11,8 +11,8 @@ image::voice-sandwich-components.png[Voice Sandwich Components]
 
 == Build a voice agent with LangChain
 
-* https://www.youtube.com/watch?v=kDPzdyX76cg[Build a voice agent with LangChain - YouTube]
-* https://github.com/langchain-ai/voice-sandwich-demo[Voice Sandwich Demo Repository]
+* https://www.youtube.com/watch?v=kDPzdyX76cg[Build a voice agent with LangChain - YouTube^]
+* https://github.com/langchain-ai/voice-sandwich-demo[Voice Sandwich Demo Repository^]
 
 == Current Stack
 
