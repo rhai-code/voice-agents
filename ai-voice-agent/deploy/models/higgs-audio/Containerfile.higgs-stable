@@ -1,0 +1,7 @@
+# working version prior to recent updates early April-2026 - pinned for quay.io/eformat/higgs-audio-vllm:stable
+FROM quay.io/eformat/higgs-audio-vllm:latest
+COPY api_server.py /usr/local/lib/python3.12/dist-packages/vllm/entrypoints/bosonai/api_server.py
+COPY higgs_audio_tokenizer.py /usr/local/lib/python3.12/dist-packages/vllm/model_executor/models/higgs_audio_tokenizer.py
+COPY higgs_audio.py /usr/local/lib/python3.12/dist-packages/vllm/model_executor/models/higgs_audio.py
+COPY config.py /usr/local/lib/python3.12/dist-packages/vllm/transformers_utils/config.py
+COPY tokenizer.py /usr/local/lib/python3.12/dist-packages/vllm/transformers_utils/tokenizer.py
