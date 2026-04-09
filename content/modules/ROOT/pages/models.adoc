@@ -3,25 +3,89 @@
 :toc: macro
 :toclevels: 2
 
+++++
+<div id="lightbox"></div>
+++++
+
 Deploy and test the Speech to Text (Whisper) and Text to Speech (Higgs-Audio) models using RHOAI.
 
+These two models form the speech layer of the voice agent pipeline:
+
+```
+User Speech → [Whisper STT] → Text → [LLM Agent] → Text → [Higgs-Audio TTS] → Speech
+```
+
+== Prerequisites
+
+You need to be logged into OpenShift from a terminal in your workbench.
+
+Open a **Terminal** in JupyterLab and run:
+
+[source,bash]
+----
+oc login --server=https://api.ocp.cloud.rhai-tmm.dev:6443 -u <username> -p <password>
+oc project ai-roadshow
+----
+
+The Higgs-Audio model downloads weights from Hugging Face. Create a secret with your HF token:
+
+[source,bash]
+----
+oc apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hf-secret
+type: Opaque
+stringData:
+  token: <your-huggingface-token>
+EOF
+----
+
 == Speech to Text — Whisper
+
+Whisper converts spoken audio into text. We deploy the `whisper-large-v3-turbo` model (quantized W4A16) from the Red Hat model registry using the KServe `LLMInferenceService` custom resource.
+
+It runs on a small GPU slice (MIG 1g.18gb).
 
 === Deploy
 
 [source,bash]
 ----
-oc apply -f models/whisper/whisper-llmisvc.yaml
+oc apply -f ai-voice-agent/deploy/models/whisper/whisper-llmisvc.yaml
+----
+
+Wait for the pod to show `2/2 Running`:
+
+[source,bash]
+----
+oc get pods -l app.kubernetes.io/name=whisper
+----
+
+Check the model is ready:
+
+[source,bash]
+----
+oc get llmisvc whisper -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
 ----
 
 === Test
 
+Get the model URL and service account token:
+
+[source,bash]
+----
+MODEL_URL=$(oc get llmisvc whisper -o jsonpath='{.status.addresses[?(@.name=="gateway-external")].url}' | tr ' ' '\n' | grep https)
+ACCESS_TOKEN=$(oc get secret whisper-sa-whisper-sa -o jsonpath='{.data.token}' | base64 -d)
+----
+
+Send an audio file to the transcription endpoint:
+
 [source,bash]
 ----
 curl -s -X POST ${MODEL_URL}/v1/audio/transcriptions \
-  -H "Content-Type: multipart/form-data" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  --form file=@/home/mike/Downloads/hello.wav \
+  --form file=@test.wav \
   --form model=whisper | jq .
 ----
 
@@ -38,22 +102,34 @@ Expected response:
 }
 ----
 
-The Whisper model converts speech audio into text — the first step in the voice agent pipeline.
-
 == Text to Speech — Higgs-Audio
+
+Higgs-Audio generates natural-sounding speech from text, completing the voice agent loop.
+
+It runs as a standard Kubernetes Deployment with vLLM on a GPU (MIG 2g.35gb slice) and downloads the model from Hugging Face.
 
 === Deploy
 
 [source,bash]
 ----
-oc apply -f models/higgs-audio/higgs-audio-v2-deployment.yaml
+oc apply -f ai-voice-agent/deploy/models/higgs-audio/higgs-audio-v2-deployment.yaml
+----
+
+Wait for the pod to show `1/1 Running` (this may take several minutes on first start as it downloads model weights):
+
+[source,bash]
+----
+oc get pods -l app=higgs-audio-predictor
+oc rollout status deployment/higgs-audio-predictor
 ----
 
 === Test
 
+Send a text prompt to the TTS endpoint:
+
 [source,bash]
 ----
-curl -X POST $MODEL_URL/v1/audio/speech \
+curl -X POST http://higgs-audio-predictor:8080/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{
     "model": "higgs-audio-v2-generation-3B-base",
@@ -64,6 +140,29 @@ curl -X POST $MODEL_URL/v1/audio/speech \
   --output - | ffmpeg -f s16le -ar 24000 -ac 1 -i pipe:0 -f wav - | ffplay -nodisp -autoexit -
 ----
 
-This sends a text prompt to the TTS model, receives PCM audio, converts to WAV with ffmpeg, and plays it with ffplay.
+This sends a text prompt to the TTS model, receives PCM audio (signed 16-bit, 24kHz, mono), converts to WAV with ffmpeg, and plays it with ffplay.
 
-The Higgs-Audio model generates natural-sounding speech from text, completing the voice agent loop.
+== Notebook
+
+All these steps are available as a Jupyter notebook that you can run directly in your workbench:
+
+https://github.com/eformat/voice-agents/blob/main/content/notebooks/1-models.ipynb[1-models.ipynb^]
+
+The notebook generates a test audio file, retrieves credentials automatically, and lets you play the TTS output inline.
+
+== Summary
+
+[cols="1,1,1,1",options="header"]
+|===
+| Model | Type | GPU | API Endpoint
+
+| Whisper
+| Speech to Text
+| MIG 1g.18gb
+| `/v1/audio/transcriptions`
+
+| Higgs-Audio
+| Text to Speech
+| MIG 2g.35gb
+| `/v1/audio/speech`
+|===
