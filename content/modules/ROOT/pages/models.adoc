@@ -150,6 +150,12 @@ https://github.com/eformat/voice-agents/blob/main/content/notebooks/1-models.ipy
 
 The notebook generates a test audio file, retrieves credentials automatically, and lets you play the TTS output inline.
 
+++++
+<div class="imageblock" id="models-notebook">
+  <img src="_images/models-notebook-top.png" alt="Models Notebook" class="zoom">
+</div>
+++++
+
 == Summary
 
 [cols="1,1,1,1",options="header"]
