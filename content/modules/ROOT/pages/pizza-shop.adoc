@@ -4,17 +4,101 @@
 :toclevels: 2
 :imagesdir: ../images
 
-Putting it all together — the agent architecture, prompt engineering, handoff flow, and running the demo.
+++++
+<div id="lightbox"></div>
+++++
+
+Putting it all together — deploy the voice agent app, connect the speech models to an LLM agent, and have a spoken conversation about pizza.
 
 video::X-BNR-7Umiw[youtube]
 
-== Agent Graph
+The app follows the **voice sandwich** pattern:
+
+```
+Browser Mic → [Whisper STT] → Text → [LLM Agent Graph] → Text → [Higgs-Audio TTS] → Speaker
+```
+
+[cols="1,1,2",options="header"]
+|===
+| Component | Description | Port
+
+| Backend
+| Python WebSocket server (LangGraph agent)
+| 8765
+
+| Frontend
+| Next.js UI served by Nginx
+| 8080
+|===
+
+== Run the Notebook
+
+The fastest way to deploy and test the pizza shop app is the notebook. It gathers credentials, runs Helm install, and tests the WebSocket — all from your workbench.
+
+=== Prerequisites
+
+1. Complete the **Models** notebook first (speech models must be running)
+2. Open a **Terminal** in JupyterLab and log in to OpenShift:
+
+[.copypaste,source,bash]
+----
+oc login --server=https://api.ocp.cloud.rhai-tmm.dev:6443 -u <username> -p <password>
+oc project ai-roadshow
+----
+
+=== Open and run
+
+In the _File Explorer_, navigate to `voice-agents/content/notebooks/` and open:
+
+https://github.com/eformat/voice-agents/blob/main/content/notebooks/2-pizza-shop.ipynb[2-pizza-shop.ipynb^]
+
+Run all cells (**Run > Run All Cells**). The notebook will:
+
+1. Verify speech models are running
+2. Gather MaaS LLM and STT/TTS credentials
+3. Deploy the app via Helm chart
+4. Wait for backend and frontend pods
+5. Test the agent via WebSocket (text input, no mic needed)
+6. Provide a link to the Web UI
+
+[NOTE]
+====
+The MaaS LLM token requires your personal service account from the enterprise tier namespace. The notebook will prompt you to fill in your SA name. Run `oc get sa -n maas-default-gateway-tier-enterprise` to find it.
+====
+
+If the notebook completes successfully, open the Web UI link and try the voice experience. The rest of this page covers the agent architecture and manual deployment steps.
+
+'''
+
+== The Web UI
+
+++++
+<div class="imageblock" id="pizza-shop-ui">
+  <img src="_images/pizza-shop-ui.png" alt="Pizza Shop UI" class="zoom">
+</div>
+++++
+
+The UI connects to the backend WebSocket automatically. Use the **TALK** button to record with your microphone, or type a message in the text box.
+
+++++
+<div class="imageblock" id="pizza-shop-conversation">
+  <img src="_images/pizza-shop-conversation.png" alt="Pizza Shop Conversation" class="zoom">
+</div>
+++++
+
+The conversation history shows agent routing — the supervisor decides which specialist agent handles each request.
+
+'''
+
+== Agent Architecture
+
+=== Agent Graph
 
 The pizza agent graph shows how different agents collaborate:
 
 image::agent-graph.png[Agent Graph]
 
-=== Creating Agents
+==== Creating Agents
 
 Agents are created with specific roles and responsibilities:
 
@@ -27,19 +111,19 @@ Each agent has:
 * Access to tools and functions
 * Connection to the LLM
 
-=== Supervisor Model Configuration
+==== Supervisor Model Configuration
 
 The supervisor agent coordinates all other agents:
 
 image::supervisor-model-configuration.png[Supervisor Model Configuration]
 
-=== Invoking Agents
+==== Invoking Agents
 
 Agents are invoked through the LangGraph framework:
 
 image::invoking-agents.png[Invoking Agents]
 
-=== Conversation State
+==== Conversation State
 
 The system maintains conversation state across interactions:
 
@@ -47,33 +131,33 @@ image::conversation-state.png[Conversation State]
 
 State includes: current pizza type, order details, delivery information, conversation history, and interrupt flags.
 
-== Agent Prompts
+=== Agent Prompts
 
-=== Supervisor
+==== Supervisor
 
 The supervisor manages the flow between agents:
 
 image::supervisor-agent-prompt.png[Supervisor Agent Prompt]
 
-=== Pizza Type
+==== Pizza Type
 
 Handles pizza selection:
 
 image::pizza-agent-prompt.png[Pizza Agent Prompt]
 
-=== Order Total
+==== Order Total
 
 Calculates order costs:
 
 image::order-agent-prompt.png[Order Agent Prompt]
 
-=== Delivery
+==== Delivery
 
 Manages delivery details:
 
 image::delivery-agent-prompt.png[Delivery Agent Prompt]
 
-== Agent Interrupts
+=== Agent Interrupts
 
 The system handles interruptions gracefully:
 
@@ -81,9 +165,9 @@ image::agent-interrupt.png[Agent Interrupt]
 
 Interrupts allow canceling operations, switching agents, handling user corrections, and managing error states.
 
-== LangGraph and Agent Handoffs
+=== LangGraph and Agent Handoffs
 
-=== Supervisor Routing
+==== Supervisor Routing
 
 The supervisor routes requests to the appropriate specialist agent:
 
@@ -91,13 +175,13 @@ image::supervisor-routing.png[Supervisor Routing]
 
 Routing decisions are based on user intent, current conversation state, and agent capabilities.
 
-=== Wait for User Speech
+==== Wait for User Speech
 
 The system pauses to wait for user input:
 
 image::wait-for-user-speech.png[Wait for User Speech]
 
-=== Handoff Flow
+==== Handoff Flow
 
 1. User speaks -> Speech converted to text (STT)
 2. Supervisor receives text and analyzes intent
@@ -106,60 +190,80 @@ image::wait-for-user-speech.png[Wait for User Speech]
 5. Response converted to speech (TTS)
 6. System waits for next user input
 
-== Running the Demo
+'''
 
-=== Server Side
+== Step-by-step Deployment
 
-In your voice notebook, install requirements and run the WebSocket server:
+=== Gather Credentials
 
-[.copypaste,source,bash]
-----
-uv pip install -r requirement.txt
-----
+The backend needs tokens for the LLM (MaaS), STT (Whisper), and TTS (Higgs-Audio).
 
-[.copypaste,source,bash]
-----
-python ws_server.py
-----
-
-image:server-side.png[Server Side]
-
-=== Client Side
+Get your MaaS LLM token (replace `<your-maas-sa>` with your SA name):
 
 [.copypaste,source,bash]
 ----
-cd web
-npm i
-npm run build
-npx next dev -H 0.0.0.0 -p 3000
+oc get sa -n maas-default-gateway-tier-enterprise
 ----
-
-image:client-side.png[Client Side]
-
-Apply client side routing:
 
 [.copypaste,source,bash]
 ----
-oc apply -f web-ui-routing.yaml
+LLM_TOKEN=$(oc create token <your-maas-sa> -n maas-default-gateway-tier-enterprise \
+  --audience=maas-default-gateway-sa --duration=24h)
 ----
 
-Browse to the Web UI Route.
-
-=== Testing
-
-Connect to the web socket using the notebook proxy:
+Get the Whisper STT token:
 
 [.copypaste,source,bash]
 ----
-wss://data-science-gateway.apps.<CLUSTER_DOMAIN>/notebook/agent-demo/voice/proxy/8765/admin
+STT_TOKEN=$(oc get secret whisper-sa-whisper-sa -o jsonpath='{.data.token}' | base64 -d)
+WHISPER_URL=$(oc get llmisvc whisper -o jsonpath='{.status.addresses[?(@.type=="gateway-external")].url}' \
+  | tr ' ' '\n' | grep https)
 ----
 
-image:connect-web-socket.png[Connect Web Socket]
+=== Helm Install
 
-Quick test (no mic needed):
+Deploy the app with the collected credentials:
 
-image:quick-test-no-mic.png[Quick Test No Mic]
+[.copypaste,source,bash]
+----
+helm upgrade --install ai-voice-agent ai-voice-agent/deploy/chart \
+  --namespace ai-roadshow \
+  --set backend.env.MODEL_NAME=llama-4-scout-17b-16e-w4a16 \
+  --set backend.env.BASE_URL=https://maas.apps.ocp.cloud.rhai-tmm.dev/prelude-maas/llama-4-scout-17b-16e-w4a16/v1 \
+  --set backend.env.TTS_URL=http://higgs-audio-predictor:8080/v1 \
+  --set backend.env.TTS_MODEL=higgs-audio-v2-generation-3B-base \
+  --set backend.env.STT_URL="${WHISPER_URL}/v1/audio/transcriptions" \
+  --set backend.env.STT_MODEL=whisper \
+  --set backend.secret.API_KEY="${LLM_TOKEN}" \
+  --set backend.secret.STT_TOKEN="${STT_TOKEN}" \
+  --set mlflow.enabled=false \
+  --set guardrails.enabled=false \
+  --set nemoGuardrails.enabled=false
+----
 
-Start a conversation:
+=== Wait for Pods
 
-image:use-your-voice.png[Use Your Voice]
+[.copypaste,source,bash]
+----
+oc rollout status deployment/ai-voice-agent-backend --timeout=120s
+oc rollout status deployment/ai-voice-agent-frontend --timeout=120s
+oc get pods -l 'app.kubernetes.io/part-of=ai-voice-agent'
+----
+
+=== Get the App URL
+
+[.copypaste,source,bash]
+----
+echo "https://$(oc get route ai-voice-agent -o jsonpath='{.spec.host}')"
+----
+
+Open the URL in your browser. The UI auto-connects to the WebSocket backend.
+
+=== Cleanup
+
+To remove the app (keeps the speech models):
+
+[.copypaste,source,bash]
+----
+helm uninstall ai-voice-agent -n ai-roadshow
+----
