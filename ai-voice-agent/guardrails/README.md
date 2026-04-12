@@ -184,7 +184,7 @@ curl -s http://localhost:8033/v1/chat/completions \
   -H "Authorization: Bearer $API_KEY" \
   -d '{
     "model": "llama-4-scout-17b-16e-w4a16",
-    "messages": [{"role": "user", "content": "Can I order a pepperoni pizza?"}],
+    "messages": [{"role": "user", "content": "Can I order a pizza?"}],
     "detectors": {
       "input": {"prompt-injection-detector": {}},
       "output": {}
@@ -218,7 +218,7 @@ curl -s http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "llama-4-scout-17b-16e-w4a16",
-    "messages": [{"role": "user", "content": "Can I order a pepperoni pizza?"}]
+    "messages": [{"role": "user", "content": "Can I order a pizza?"}]
   }' | jq .
 ```
 

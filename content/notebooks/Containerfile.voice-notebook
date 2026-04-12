@@ -1,5 +1,10 @@
 FROM registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cuda-py312-rhel9@sha256:b6d4db66af4f575a3bd435fbe7661659db23429293ce5b7149c5fa920c33cf85
+
+ENV HELM_VERSION=4.1.1 \
+    KUSTOMIZE_VERSION=5.8.1
+
 USER root
+
 # install portaudio from EPEL, and nodejs 20 module
 RUN --mount=type=secret,id=RHEL_RHSM_USERNAME --mount=type=secret,id=RHEL_RHSM_PASSWORD \
     subscription-manager register --username "$(cat /run/secrets/RHEL_RHSM_USERNAME)" --password "$(cat /run/secrets/RHEL_RHSM_PASSWORD)" && \
@@ -15,4 +20,23 @@ RUN --mount=type=secret,id=RHEL_RHSM_USERNAME --mount=type=secret,id=RHEL_RHSM_P
     subscription-manager unregister && \
     dnf -y clean all && \
     rm -rf /var/cache/dnf
+
+# helm
+RUN curl -skL -o /tmp/helm.tar.gz https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz && \
+tar -C /tmp -xzf /tmp/helm.tar.gz && \
+mv -v /tmp/linux-amd64/helm /usr/local/bin && \
+chmod -R 775 /usr/local/bin/helm && \
+rm -rf /tmp/linux-amd64 && \
+rm -rf /tmp/helm.tar.gz && \
+echo "⚓️⚓️⚓️⚓️⚓️"
+
+# Install kustomize
+RUN curl -skL -o /tmp/kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz && \
+tar -C /tmp -xzf /tmp/kustomize.tar.gz && \
+mv -v /tmp/kustomize /usr/local/bin && \
+chmod -R 775 /usr/local/bin/kustomize && \
+rm -rf /tmp/linux-amd64 && \
+rm -rf /tmp/kustomize.tar.gz && \
+echo "🐾🐾🐾🐾🐾"
+
 USER 1001

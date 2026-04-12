@@ -128,7 +128,7 @@ export default function Home() {
   const [pizzaType, setPizzaType] = useState<string>("");
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
   const [error, setError] = useState<string>("");
-  const [textToSend, setTextToSend] = useState<string>("Can I order a pepperoni pizza?");
+  const [textToSend, setTextToSend] = useState<string>("Can I order a pizza?");
   const [ttsStreamStatus, setTtsStreamStatus] = useState<string>("idle");
   const [ttsStreamChunks, setTtsStreamChunks] = useState<number>(0);
   const [ttsStreamBytes, setTtsStreamBytes] = useState<number>(0);
