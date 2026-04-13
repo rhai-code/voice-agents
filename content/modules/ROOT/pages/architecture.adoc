@@ -3,15 +3,21 @@
 :icons: font
 :imagesdir: ../images
 
+++++
+<div id="lightbox"></div>
+++++
+
 Discover how the voice agent application is built — the voice sandwich pattern, model stack, data flow, and performance considerations.
 
 == The Voice Sandwich
 
 The "voice sandwich" pattern wraps an LLM agent between speech-to-text (STT) and text-to-speech (TTS) layers:
 
-image::voice-sandwich.png[Voice Sandwich]
-
-image::voice-sandwich-components.png[Voice Sandwich Components]
+++++
+<div class="imageblock">
+  <img src="_images/voice-sandwich.png" alt="Voice Sandwich" class="zoom">
+</div>
+++++
 
 === Current Stack
 
@@ -56,7 +62,11 @@ image::voice-sandwich-components.png[Voice Sandwich Components]
 
 == Voice Flow
 
-image::voice-flow-diagram.png[Voice Flow Diagram]
+++++
+<div class="imageblock">
+  <img src="_images/voice-flow-diagram.png" alt="Voice Flow Diagram" class="zoom">
+</div>
+++++
 
 The user records audio in the browser, the UI sends the WAV to the Python WebSocket server, the server runs STT + the agent graph, then streams TTS audio back to the browser for playback.
 
@@ -91,7 +101,11 @@ Measure Text to Speech generation speed early:
 | 1.95
 |===
 
-image::gen-x.png[Gen-X Performance Chart]
+++++
+<div class="imageblock">
+  <img src="_images/gen-x.png" alt="Gen-X Performance Chart" class="zoom">
+</div>
+++++
 
 === Client Architecture
 

@@ -96,13 +96,21 @@ The conversation history shows agent routing — the supervisor decides which sp
 
 The pizza agent graph shows how different agents collaborate:
 
-image::agent-graph.png[Agent Graph]
+++++
+<div class="imageblock">
+  <img src="_images/agent-graph.png" alt="Agent Graph" class="zoom">
+</div>
+++++
 
 ==== Creating Agents
 
 Agents are created with specific roles and responsibilities:
 
-image::agent-creation.png[Agent Creation]
+++++
+<div class="imageblock">
+  <img src="_images/agent-creation.png" alt="Agent Creation" class="zoom">
+</div>
+++++
 
 Each agent has:
 
@@ -115,19 +123,31 @@ Each agent has:
 
 The supervisor agent coordinates all other agents:
 
-image::supervisor-model-configuration.png[Supervisor Model Configuration]
+++++
+<div class="imageblock">
+  <img src="_images/supervisor-model-configuration.png" alt="Supervisor Model Configuration" class="zoom">
+</div>
+++++
 
 ==== Invoking Agents
 
 Agents are invoked through the LangGraph framework:
 
-image::invoking-agents.png[Invoking Agents]
+++++
+<div class="imageblock">
+  <img src="_images/invoking-agents.png" alt="Invoking Agents" class="zoom">
+</div>
+++++
 
 ==== Conversation State
 
 The system maintains conversation state across interactions:
 
-image::conversation-state.png[Conversation State]
+++++
+<div class="imageblock">
+  <img src="_images/conversation-state.png" alt="Conversation State" class="zoom">
+</div>
+++++
 
 State includes: current pizza type, order details, delivery information, conversation history, and interrupt flags.
 
@@ -137,31 +157,51 @@ State includes: current pizza type, order details, delivery information, convers
 
 The supervisor manages the flow between agents:
 
-image::supervisor-agent-prompt.png[Supervisor Agent Prompt]
+++++
+<div class="imageblock">
+  <img src="_images/supervisor-agent-prompt.png" alt="Supervisor Agent Prompt" class="zoom">
+</div>
+++++
 
 ==== Pizza Type
 
 Handles pizza selection:
 
-image::pizza-agent-prompt.png[Pizza Agent Prompt]
+++++
+<div class="imageblock">
+  <img src="_images/pizza-agent-prompt.png" alt="Pizza Agent Prompt" class="zoom">
+</div>
+++++
 
 ==== Order Total
 
 Calculates order costs:
 
-image::order-agent-prompt.png[Order Agent Prompt]
+++++
+<div class="imageblock">
+  <img src="_images/order-agent-prompt.png" alt="Order Agent Prompt" class="zoom">
+</div>
+++++
 
 ==== Delivery
 
 Manages delivery details:
 
-image::delivery-agent-prompt.png[Delivery Agent Prompt]
+++++
+<div class="imageblock">
+  <img src="_images/delivery-agent-prompt.png" alt="Delivery Agent Prompt" class="zoom">
+</div>
+++++
 
 === Agent Interrupts
 
 The system handles interruptions gracefully:
 
-image::agent-interrupt.png[Agent Interrupt]
+++++
+<div class="imageblock">
+  <img src="_images/agent-interrupt.png" alt="Agent Interrupt" class="zoom">
+</div>
+++++
 
 Interrupts allow canceling operations, switching agents, handling user corrections, and managing error states.
 
@@ -171,7 +211,11 @@ Interrupts allow canceling operations, switching agents, handling user correctio
 
 The supervisor routes requests to the appropriate specialist agent:
 
-image::supervisor-routing.png[Supervisor Routing]
+++++
+<div class="imageblock">
+  <img src="_images/supervisor-routing.png" alt="Supervisor Routing" class="zoom">
+</div>
+++++
 
 Routing decisions are based on user intent, current conversation state, and agent capabilities.
 
@@ -179,7 +223,11 @@ Routing decisions are based on user intent, current conversation state, and agen
 
 The system pauses to wait for user input:
 
-image::wait-for-user-speech.png[Wait for User Speech]
+++++
+<div class="imageblock">
+  <img src="_images/wait-for-user-speech.png" alt="Wait for User Speech" class="zoom">
+</div>
+++++
 
 ==== Handoff Flow
 

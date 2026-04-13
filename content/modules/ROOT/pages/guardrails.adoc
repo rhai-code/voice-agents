@@ -3,6 +3,8 @@
 :icons: font
 :imagesdir: ../images
 
+WARNING: 🚧 This module is under construction. 🚧
+
 Content safety guardrails for the AI voice agent using the TrustyAI Guardrails Orchestrator on OpenShift AI (RHOAI).
 
 == Overview
