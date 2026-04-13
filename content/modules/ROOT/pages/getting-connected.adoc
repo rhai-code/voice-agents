@@ -1,7 +1,5 @@
 = Getting Connected
 :source-highlighter: rouge
-:toc: macro
-:toclevels: 1
 
 ++++
 <div id="lightbox"></div>

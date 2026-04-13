@@ -1,6 +1,4 @@
-= Voice Lab
-:toc:
-:toc-placement: preamble
+= Voice Agents: Build an AI Voice Agent Workshop
 :icons: font
 :imagesdir: ../images
 
@@ -8,41 +6,54 @@
 <div id="lightbox"></div>
 ++++
 
+Welcome to the Voice Agents workshop!
+
+== What you'll learn
+
+In this workshop, you will:
+
+* **Deploy speech models** -- set up Whisper (STT) and Higgs-Audio (TTS) on GPU MIG slices using KServe and vLLM
+* **Build a voice agent** -- deploy a multi-agent LangGraph application that takes pizza orders via spoken conversation
+* **Measure TTS performance** -- understand gen-x (generation speed vs real-time) and why GPU selection matters for voice quality
+* **Add observability** -- monitor agent interactions, latency, and model behaviour with MLflow tracing
+* **Apply guardrails** -- configure TrustyAI FMS and NeMo for prompt injection detection and content safety
+
+== The app
+
+The pizza shop voice agent follows the **voice sandwich** pattern -- STT and TTS layers wrap an LLM agent graph. You speak into the microphone, a supervisor agent routes your request to specialist agents (pizza, order, delivery), and the response is spoken back to you in real-time.
+
 ++++
-<div class="imageblock" style="float:right">
-  <img src="_images/daisy.png" alt="Daisy Cat" width="200" class="zoom">
+<div class="imageblock">
+  <img src="_images/pizza-shop-conversation.png" alt="Pizza Shop Conversation" class="zoom">
 </div>
 ++++
 
-Welcome to the Voice Lab.
+== Who this is for
 
-🐈 Daisy Cat is famous! 🐈 and was one of the main attractions in the PetBattle app that formed the technical exercises in the book - link:https://www.redhat.com/en/engage/devops-culture-practice-openshift-ebooks[DevOps Culture and Practice with OpenShift - Deliver continuous business value through people, process, and technology^]. Daisy inspired us to use many of the open practices described in the book to help deliver this Roadshow and we hope that you are like Daisy, where link:https://en.wikipedia.org/wiki/Curiosity_killed_the_cat[**curiosity killed the cat but satisfaction brought it back**^].
+This workshop is designed for AI/ML engineers, platform engineers, and developers who want hands-on experience with:
 
-Each of the modules is self-contained so can be run on the provided environment.
+* Voice-enabled AI applications (STT + LLM + TTS)
+* Multi-agent orchestration with LangGraph
+* Model serving on OpenShift AI with vLLM and KServe
+* AI safety guardrails (TrustyAI, NeMo)
+
+**Experience level**: Beginner to Intermediate
+
+== Prerequisites
+
+* Access to an OpenShift AI cluster with GPU nodes
+* A Hugging Face account and API token
+* A web browser with microphone access (for the voice demo)
+
+== Estimated time
+
+This workshop takes approximately **60 minutes** to complete.
 
 [NOTE]
 ====
 All images have _lightbox_ attached to them so they can overlay on top of the web page so you can see them. Just click on them! (and click to minimize again)
 ====
 
-[TIP]
-====
-Be sure to set your cluster domain in the top navigation bar and hit `Save` - this updates the documentation hyperlinks to point to your cluster.
-====
+== Let's get started!
 
-++++
-<div class="imageblock">
-  <img src="_images/top-nav-bar.png" alt="Top Navigation Bar" class="zoom">
-</div>
-++++
-
-Your cluster should be available from the Console URL
-
-https://console-openshift-console.apps.<CLUSTER_DOMAIN>[Console URL - https://console-openshift-console.apps.<CLUSTER_DOMAIN>^]
-
-or if you prefer via the CLI
-
-[.copypaste,source,bash]
-----
-oc login --server=https://api.<CLUSTER_DOMAIN>:6443 -u admin -p password
-----
+Click on **Workshop Overview** in the navigation to begin.

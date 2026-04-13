@@ -1,7 +1,5 @@
 = Pizza Shop Demo
 :source-highlighter: rouge
-:toc: macro
-:toclevels: 2
 :imagesdir: ../images
 
 ++++

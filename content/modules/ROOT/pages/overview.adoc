@@ -1,0 +1,57 @@
+= Workshop overview
+:navtitle: Workshop Overview
+:icons: font
+:imagesdir: ../images
+
+++++
+<div id="lightbox"></div>
+++++
+
+== Background
+
+We wanted to build a voice-enabled AI agent that could take pizza orders over a spoken conversation — no typing, no menus, just talk. The idea was to combine open source speech models with a multi-agent LLM framework and see if the result felt natural enough for a real interaction.
+
+We deployed Whisper for speech-to-text, Higgs-Audio for text-to-speech, and Llama 4 Scout as the agent brain, all running on OpenShift AI with GPU MIG slices. The agent architecture follows the **voice sandwich** pattern — STT and TTS layers wrap an LLM agent graph that routes conversations through specialist agents.
+
+++++
+<div class="imageblock">
+  <img src="_images/voice-sandwich.png" alt="Voice Sandwich" class="zoom">
+</div>
+++++
+
+== How the agent works
+
+The voice agent operates as a **multi-agent graph** using LangGraph:
+
+1. Browser captures microphone audio and sends WAV over WebSocket
+2. **Whisper** transcribes the audio to text
+3. A **supervisor agent** analyses intent and routes to the right specialist
+4. Specialist agents (pizza, order, delivery) handle their domain using tools
+5. **Higgs-Audio** converts the response text to speech
+6. PCM audio streams back to the browser in real-time (~20ms chunks)
+
+++++
+<div class="imageblock">
+  <img src="_images/agent-graph.png" alt="Agent Graph" class="zoom">
+</div>
+++++
+
+== Key considerations
+
+**TTS generation speed (gen x) determines voice quality** — if the model generates audio slower than real-time (gen x < 1.0), users hear choppy playback or silence gaps. GPU selection matters: an L4 delivers 0.78x (too slow), while an H200 MIG slice achieves 2-3x (smooth).
+
+**The orchestrator can't handle tool messages** — the guardrails orchestrator rejects `tool` role messages with a 422, so agent nodes use regular LLMs with tools and screening is done separately on isolated message text.
+
+**Multi-agent routing keeps conversations natural** — the supervisor pattern lets each specialist handle its domain without needing to understand the full conversation context. Interrupts allow graceful topic switching mid-flow.
+
+== Workshop modules
+
+In this workshop you'll work through five modules:
+
+* **Architecture** -- The voice sandwich pattern, model stack, WebSocket data flow, and gen-x performance
+* **Speech Models** -- Deploy Whisper (STT) and Higgs-Audio (TTS) on GPU MIG slices, test the APIs, and measure generation speed
+* **Pizza Shop Demo** -- Deploy the multi-agent voice app with Helm, connect everything together, and have a spoken conversation about pizza
+* **Observability** -- Monitor agent interactions with MLflow tracing and Llama Stack
+* **Guardrails** -- Add TrustyAI FMS and NeMo guardrails for prompt injection detection and content safety
+
+Click **Architecture** in the navigation to begin.

@@ -80,6 +80,6 @@ asciidoc:
     sectanchors: true
     icons: font
     source-highlighter: highlight.js
-    toc: left
+    toc: ~
     toclevels: 3
     numbered: true

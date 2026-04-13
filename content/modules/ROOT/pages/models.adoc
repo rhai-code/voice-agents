@@ -1,7 +1,5 @@
 = Speech Models
 :source-highlighter: rouge
-:toc: macro
-:toclevels: 2
 
 ++++
 <div id="lightbox"></div>

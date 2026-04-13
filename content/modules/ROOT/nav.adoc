@@ -1,6 +1,7 @@
 * xref:index.adoc[Welcome]
 
 .Workshop
+* xref:overview.adoc[Workshop Overview]
 * xref:getting-connected.adoc[Get Connected]
 
 .Modules
