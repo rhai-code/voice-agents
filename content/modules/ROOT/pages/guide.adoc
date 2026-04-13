@@ -225,4 +225,4 @@ The models powering this demo are served through **Red Hat OpenShift AI**:
 * **Model serving** via vLLM on GPU MIG slices for efficient hardware utilisation
 * **KServe** for standardised model deployment and scaling
 * **MaaS (Model as a Service)** for centralised LLM access with JWT authentication
-* **Enterprise security** with network policies and RBAC
+* **Enterprise security** Defense in depth with TrustyAI, NeMo Guardrails, network policies and RBAC
