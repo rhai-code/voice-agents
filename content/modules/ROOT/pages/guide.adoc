@@ -216,7 +216,7 @@ AI guardrails are safety layers that screen inputs and outputs for harmful conte
 * Blocking is detected by checking for canned response patterns
 * Complements FMS by catching different categories of policy violations
 
-Both systems can run simultaneously ("both" mode), providing defence in depth — if either system flags a message, it's blocked. The key insight is that guardrails are applied as a layer around the existing agent architecture, without changing the agent code itself.
+Both systems can run simultaneously ("both" mode), providing defense in depth — if either system flags a message, it's blocked. The key insight is that guardrails are applied as a layer around the existing agent architecture, without changing the agent code itself.
 
 === Powered by Red Hat OpenShift AI
 
